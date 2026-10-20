@@ -457,6 +457,9 @@ class Level1Scene extends BaseScene {
 
   create() {
     this.initBase();
+    this.challengeSession = {};
+    this.ninja = null;
+    this.mini = null;
     Save.setLevel('Level1');
     buildGianicoloArt(this);
     this.add.image(0, 0, 'gianicolo').setOrigin(0, 0).setDepth(0);
@@ -471,6 +474,7 @@ class Level1Scene extends BaseScene {
     this.player = fr;
 
     this.addNPCs();
+    this.enableChallenges();
     this.addHearts();
     this.addHUD();
     this.exclaim = new ExclaimMarker(this);
@@ -482,6 +486,14 @@ class Level1Scene extends BaseScene {
 
     Audio8.playSong(SONGS.gianicolo);
     this.busy = true;
+    this.battle = null;
+    this.npcMenuTick = null;
+    this.events.once('shutdown', () => {
+      this.challengeSession = null;
+      if (this.battle) this.battle.destroy();
+      this.battle = null;
+      this.npcMenuTick = null;
+    });
     this.intro();
   }
 
@@ -550,6 +562,42 @@ class Level1Scene extends BaseScene {
     W.setInteract(15, 23, bench);
   }
 
+  // Conserva le interazioni originali: le sfide sono sempre una scelta facoltativa.
+  enableChallenges() {
+    this.challengeNPCs = Array.from(this.world.occupied.values());
+    for (const npc of this.challengeNPCs) {
+      const key = this.world.key(npc.c, npc.r);
+      const original = this.world.interact.get(key);
+      this.world.setInteract(npc.c, npc.r, () => this.offerChallenge(npc, original));
+    }
+  }
+
+  async offerChallenge(npc, original) {
+    if (this.locked || this.mover.moving) return;
+    const session = this.challengeSession;
+    this.busy = true;
+    this.exclaim.hide();
+    npc.ch.face(OPPOSITE[this.player.dir]);
+    try {
+      const profile = GIANICOLO_OPPONENTS[npc.key];
+      const choice = await GianicoloBattle.choose(this, profile.name, ['Parla', 'Sfida!', 'Annulla']);
+      if (!this.sys.isActive() || this.challengeSession !== session) return;
+      if (choice === 0) {
+        if (original) await original();
+      } else if (choice === 1) {
+        this.battle = new GianicoloBattle(this, npc);
+        await this.battle.run();
+      }
+    } finally {
+      if (this.challengeSession !== session) return;
+      if (this.battle) this.battle.destroy();
+      this.battle = null;
+      Controls.reset();
+      // Il dialogo di Simone può aver avviato la sfida ninja: non sbloccarla.
+      if (this.sys.isActive() && !this.ninja && !this.leaving) this.busy = false;
+    }
+  }
+
   addHearts() {
     this.hearts = new Map();
     for (const [c, r] of L1_HEARTS) {
@@ -604,11 +652,14 @@ class Level1Scene extends BaseScene {
     await this.talk([
       [null, 'Trastevere. Qui è iniziata la vostra prima uscita…'],
       [null, '…e da qui si sale al Gianicolo. Raccogli i 5 cuoricini lungo la strada: Simone ti aspetta in cima!'],
+      [null, 'Con A puoi parlare con chi incontri… oppure sfidarlo a una battaglia! Le sfide sono facoltative e puoi sempre fuggire.'],
     ]);
     this.busy = false;
   }
 
   tick(time) {
+    if (this.npcMenuTick) this.npcMenuTick();
+    if (this.battle) this.battle.update();
     const free = !this.locked;
     this.mover.update(time, free);
     if (this.mini) this.updateMini(time);
@@ -687,6 +738,7 @@ class Level1Scene extends BaseScene {
   }
 
   jitterKids() {
+    if (this.locked) return;
     const k = this.kids[Math.floor(Math.random() * this.kids.length)];
     const roll = Math.random();
     if (roll < 0.4) {

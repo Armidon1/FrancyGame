@@ -13,6 +13,32 @@ const SPEAKER_COLORS = {
   Francesca: 0xc0506e,
 };
 
+// Ritratto sopra il riquadro, stile Pokémon Mystery Dungeon: nome di chi parla -> sprite.
+const SPEAKER_PORTRAITS = {
+  Simone: 'simone', Francesca: 'francesca',
+  Cameriere: 'cameriere', Signora: 'nonna', Turista: 'turistaA', Turisti: 'turistaA',
+  Ragazzi: 'kidA', 'Il Sindaco': 'sindaco',
+  Commessa: 'commessa', Barista: 'barista', Londinese: 'londoner',
+  'Zia Dorota': 'ziaDorota', 'Zio Paul': 'zioPaul',
+};
+const PORTRAIT_BG = { simone: '#c8d6f0', francesca: '#f6c9d4' };
+const PORTRAIT = { w: 44, h: 44 };
+
+// Testa e spalle del fotogramma frontale, ingrandite x2 dentro una cornice come il riquadro.
+function portraitCanvas(scene, key) {
+  const frame = scene.textures.getFrame(key, 0);
+  const [small, sctx] = Pix.canvas(20, 20);
+  const bg = PORTRAIT_BG[key] || '#f3dfb8';
+  Pix.rect(sctx, 0, 0, 20, 20, bg);
+  for (let x = 0; x < 20; x += 2) Pix.px(sctx, x, 19, '#ffffff'); // un filo di luce in basso
+  sctx.drawImage(frame.source.image, frame.cutX, frame.cutY, 16, 18, 2, 2, 16, 18);
+  const [c, ctx] = Pix.canvas(PORTRAIT.w, PORTRAIT.h);
+  Pix.box(ctx, 0, 0, PORTRAIT.w, PORTRAIT.h, PAL.cream, PAL.outline);
+  Pix.rect(ctx, 1, 1, PORTRAIT.w - 2, PORTRAIT.h - 2, PAL.pink);
+  ctx.drawImage(small, 2, 2, 40, 40);
+  return c;
+}
+
 function dialogBoxCanvas(w, h) {
   const [c, ctx] = Pix.canvas(w, h);
   // Bordo doppio: scuro esterno, crema, linea calda interna
@@ -41,12 +67,13 @@ class DialogBox {
     if (!scene.textures.exists(key)) Pix.addTexture(scene, key, dialogBoxCanvas(D.w, D.h));
     this.root = scene.add.container(0, 0).setScrollFactor(0).setDepth(1000).setVisible(false);
     this.bg = scene.add.image(D.x, D.y, key).setOrigin(0, 0);
+    this.portrait = scene.add.image(D.x + 2, D.y - 2, '__DEFAULT').setOrigin(0, 1).setVisible(false);
     this.tab = scene.add.image(D.x + 6, D.y - 11, '__DEFAULT').setOrigin(0, 0).setVisible(false);
     this.nameText = addText(scene, 0, D.y - 8, '', { color: 0x2a1d1a });
     this.text = addText(scene, D.x + D.padX, D.y + D.padY, '', { color: 0x2a1d1a });
     this.text.setLineSpacing(1);
     this.arrow = addText(scene, D.x + D.w - 14, D.y + D.h - 13, '▼', { color: 0xd0607e });
-    this.root.add([this.bg, this.tab, this.nameText, this.text, this.arrow]);
+    this.root.add([this.portrait, this.bg, this.tab, this.nameText, this.text, this.arrow]);
     this.queue = [];
     this.pages = [];
     this.active = false;
@@ -86,6 +113,16 @@ class DialogBox {
   }
 
   setSpeaker(who) {
+    const sprite = who && SPEAKER_PORTRAITS[who];
+    const pkey = sprite ? `portrait_${sprite}` : null;
+    if (pkey && !this.scene.textures.exists(pkey) && this.scene.textures.exists(sprite)) {
+      Pix.addTexture(this.scene, pkey, portraitCanvas(this.scene, sprite));
+    }
+    const hasPortrait = !!pkey && this.scene.textures.exists(pkey);
+    if (hasPortrait) this.portrait.setTexture(pkey);
+    this.portrait.setVisible(hasPortrait);
+    // Con il ritratto il nome si sposta alla sua destra.
+    this.tab.x = DIALOG.x + (hasPortrait ? PORTRAIT.w + 6 : 6);
     if (!who) {
       this.tab.setVisible(false);
       this.nameText.setVisible(false);

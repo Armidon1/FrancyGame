@@ -213,6 +213,16 @@ const NPC_DEFS = {
       },
     },
   },
+  // il film sul soffitto: caricature di Hugh Grant (ciuffo anni '90, completo blu) e Bridget Jones
+  hughGrant: {
+    tpl: 'boy',
+    pal: { H: '#3a2418', h: '#5e3c26', C: '#2c3a5a', c: '#1e2840', A: '#f4f4f0', a: '#8a2a3a', P: '#26304a', O: '#141018' },
+    patch: {
+      down: { 5: '..KHHhHSSHHhHK..', 6: '..KHhSSSSSShHK..' },
+      left: { 5: '..KHHHHHHHHHHK..', 6: '.KHHSSSHHHHHHK..' },
+    },
+  },
+  bridget: { tpl: 'girl', pal: { H: '#b07a44', h: '#d4a466', d: '#875a30', M: '#d9434f', m: '#a8303c', J: '#2a2a36', j: '#1e1e28', Y: '#f4f4f0' } },
   ziaDorota: { tpl: 'girl', pal: { H: '#2a1d1a', h: '#4a3028', d: '#1a1210', M: '#c06a8a', m: '#9a4a6a', J: '#4a4a5a', Y: '#f4f4f4' } },
   londoner: { tpl: 'boy', pal: { H: '#4a2e22', h: '#6e4832', X: '#1e1a1e', x: '#3a3a3a', C: '#3a3a4a', c: '#2a2a36', A: '#d9434f', a: '#9c2a3a' }, patch: PATCH.beanie },
 };

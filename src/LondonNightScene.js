@@ -163,16 +163,42 @@ class LondonNightScene extends BaseScene {
     Pix.rect(pc, 0, 236, 480, 2, '#c8c8c4');
     Pix.addTexture(this, 'ceilingPov', p);
 
-    // il "film" proiettato: Londra al tramonto
+    // il film proiettato: Il diario di Bridget Jones, una via di Londra di notte sotto la neve
     const [m, mc] = Pix.canvas(240, 128);
-    ditherGradient(mc, 0, 0, 240, 128, ['#4a3a74', '#a8507a', '#f7b267', '#fde3a0']);
-    Pix.disc(mc, 170, 96, 16, '#fff2c4');
-    Pix.rect(mc, 0, 100, 240, 28, '#3a2340');
-    for (let x = 0; x < 240; x += 14) Pix.rect(mc, x, 100 - 6 - ((x * 3) % 14), 12, 20, '#3a2340');
-    Pix.rect(mc, 40, 52, 10, 50, '#3a2340');
-    Pix.rect(mc, 38, 46, 14, 8, '#3a2340');
-    for (let k = 0; k < 8; k++) Pix.rect(mc, 45 - k / 2, 38 + k, 1 + k, 1, '#3a2340');
-    Pix.disc(mc, 45, 50, 3, '#fff2c4');
+    ditherGradient(mc, 0, 0, 240, 70, ['#141a38', '#24305a', '#3a4470']);
+    const rb = Pix.rng(21);
+    let bx = 0;
+    while (bx < 240) {
+      const bw = 26 + Math.floor(rb() * 18);
+      const top = 22 + Math.floor(rb() * 24);
+      Pix.rect(mc, bx, top, bw, 100 - top, rb() < 0.5 ? '#6e3a30' : '#5e3430');
+      Pix.rect(mc, bx, top, bw, 2, '#e8eef4'); // neve sui tetti
+      Pix.rect(mc, bx + bw - 1, top, 1, 100 - top, '#40221e');
+      for (let wy = top + 6; wy < 88; wy += 12) {
+        for (let wx = bx + 4; wx < bx + bw - 6; wx += 9) {
+          Pix.rect(mc, wx, wy, 5, 7, rb() < 0.65 ? '#ffd27a' : '#2a2030');
+          Pix.rect(mc, wx, wy + 7, 5, 1, '#e8eef4');
+        }
+      }
+      bx += bw;
+    }
+    // il pub sotto casa di Bridget
+    Pix.rect(mc, 150, 76, 54, 24, '#2f5a3a');
+    Pix.rect(mc, 150, 76, 54, 3, '#1e3a26');
+    Pix.rect(mc, 156, 84, 16, 12, '#ffd27a');
+    Pix.rect(mc, 182, 84, 16, 12, '#ffd27a');
+    Pix.rect(mc, 174, 82, 6, 18, '#5a3a24');
+    Pix.rect(mc, 204, 70, 1, 6, '#1e1a1e');
+    Pix.rect(mc, 200, 64, 10, 8, '#c9a04a');
+    Pix.rect(mc, 201, 65, 8, 6, '#2f5a3a');
+    // lampione
+    Pix.rect(mc, 60, 66, 2, 34, '#1e1a1e');
+    Pix.rect(mc, 57, 62, 8, 5, '#1e1a1e');
+    Pix.rect(mc, 58, 63, 6, 3, '#fff2c4');
+    // marciapiede innevato
+    Pix.rect(mc, 0, 100, 240, 28, '#4a4452');
+    Pix.rect(mc, 0, 100, 240, 3, '#e8eef4');
+    for (let i = 0; i < 40; i++) Pix.rect(mc, Math.floor(rb() * 236), 104 + Math.floor(rb() * 22), 2 + Math.floor(rb() * 4), 1, '#d8e0ea');
     Pix.addTexture(this, 'filmScene', m);
   }
 
@@ -345,6 +371,8 @@ class LondonNightScene extends BaseScene {
     const black = this.add.rectangle(0, 0, 480, 270, 0x0e0a12, 0).setOrigin(0, 0).setDepth(1200);
     await this.tweenP({ targets: black, fillAlpha: 1, duration: 600 });
     const ov = this.add.container(0, 0).setDepth(1190);
+    this.dialog.root.setDepth(1300); // i dialoghi restano sopra il film
+
     ov.add(this.add.image(0, 0, 'ceilingPov').setOrigin(0, 0));
     const beam = this.add.graphics();
     beam.fillStyle(0xfff4d8, 0.07).fillTriangle(240, 270, 120, 168, 360, 168).fillTriangle(240, 270, 120, 168, 120, 40);
@@ -353,19 +381,49 @@ class LondonNightScene extends BaseScene {
     const screen = this.add.image(240, 104, 'filmScene');
     ov.add(screen);
     this.tweens.add({ targets: screen, alpha: 0.88, duration: 90, yoyo: true, repeat: -1, repeatDelay: 700 });
-    // due figurine nel film che camminano mano nella mano
-    const a = this.add.sprite(140, 160, 'francesca', DIR_ROW.right * 3).setOrigin(0.5, 1);
-    const b = this.add.sprite(124, 160, 'simone', DIR_ROW.right * 3).setOrigin(0.5, 1);
-    a.play('francesca-walk-right'); b.play('simone-walk-right');
-    ov.add([a, b]);
-    this.tweens.add({ targets: [a, b], x: '+=180', duration: 7000 });
+    // nel film: Bridget e Hugh Grant che si vengono incontro sotto la neve
+    createCharAnims(this, 'bridget');
+    createCharAnims(this, 'hughGrant');
+    const bj = this.add.sprite(136, 164, 'bridget', DIR_ROW.right * 3).setOrigin(0.5, 1).setScale(2);
+    const hg = this.add.sprite(344, 164, 'hughGrant', DIR_ROW.left * 3).setOrigin(0.5, 1).setScale(2);
+    ov.add([bj, hg]);
+    for (let i = 0; i < 36; i++) {
+      const flake = this.add.rectangle(122 + Math.random() * 236, 42 + Math.random() * 124, 1, 1, 0xffffff, 0.9);
+      ov.add(flake);
+      this.tweens.add({
+        targets: flake, y: 166, x: flake.x + 6, duration: 2500 + Math.random() * 2500, repeat: -1,
+        onRepeat: () => { flake.y = 42; flake.x = 122 + Math.random() * 230; },
+      });
+    }
+    // titolo d'apertura del film
+    const titleBg = this.add.rectangle(120, 40, 240, 128, 0x0e0a12, 1).setOrigin(0, 0);
+    const title = addText(this, 240, 96, 'Il diario di Bridget Jones', { color: 0xfbf3e4, origin: [0.5, 0.5] });
+    const titleSub = addText(this, 240, 112, 'Londra, quella sera, sul soffitto', { color: 0xc9b48a, origin: [0.5, 0.5] });
+    ov.add([titleBg, title, titleSub]);
     // le vostre teste, dal cuscino
     const hf = this.add.sprite(214, 214, 'francesca', DIR_ROW.up * 3).setOrigin(0.5, 0).setScale(4).setCrop(0, 0, 16, 14);
     const hs = this.add.sprite(272, 214, 'simone', DIR_ROW.up * 3).setOrigin(0.5, 0).setScale(4).setCrop(0, 0, 16, 14);
     ov.add([hf, hs]);
     await this.tweenP({ targets: black, fillAlpha: 0, duration: 800 });
-    await this.wait(1200);
-    await this.talk([[null, 'E così vi siete visti un film. Sul soffitto.']]);
+    await this.wait(1600);
+    await this.tweenP({ targets: [titleBg, title, titleSub], alpha: 0, duration: 700 });
+    await Promise.all([
+      this.walkSprite(bj, 'bridget', 222, 164, 40),
+      this.walkSprite(hg, 'hughGrant', 258, 164, 40),
+    ]);
+    const kiss = this.add.image(240, 112, 'heartPink').setScale(0);
+    ov.add(kiss);
+    Audio8.sfx('pop');
+    await this.tweenP({ targets: kiss, scale: 2, duration: 350, ease: 'Back.Out' });
+    this.tweens.add({ targets: kiss, y: 96, alpha: 0, delay: 900, duration: 1200 });
+    await this.wait(900);
+    await this.talk([
+      [null, 'Sul soffitto: Il diario di Bridget Jones. Londra, la neve… e Hugh Grant.'],
+      ['Francesca', 'Hugh Grant…'],
+      ['Simone', 'Ehi. Guarda che il tuo orsacchiotto è qui accanto a te.'],
+      ['Francesca', 'Lo so. Però Hugh Grant…'],
+      [null, 'E così vi siete visti un film. Sul soffitto.'],
+    ]);
     for (let i = 0; i < 3; i++) {
       const heart = this.add.image(250 + i * 6, 200, 'heart').setDepth(1195);
       this.tweens.add({ targets: heart, y: 150, alpha: 0, delay: i * 400, duration: 1500, onComplete: () => heart.destroy() });
@@ -373,6 +431,7 @@ class LondonNightScene extends BaseScene {
     await this.wait(2200);
     await this.tweenP({ targets: black, fillAlpha: 1, duration: 600 });
     ov.destroy();
+    this.dialog.root.setDepth(1000);
     await this.tweenP({ targets: black, fillAlpha: 0, duration: 600 });
     black.destroy();
   }
