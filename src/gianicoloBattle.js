@@ -18,6 +18,21 @@ const GIANICOLO_OPPONENTS = Object.freeze(Object.fromEntries([
   ]],
 ].map(([key, name, hp, moves]) => [key, Object.freeze({ key, name, hp, moves: Object.freeze(moves.map(([name, damage, text, effect = null]) => Object.freeze({ name, damage, text, effect }))) })])));
 
+// Londra: cittadini sfidabili nel livello 3 (chiave profilo -> sprite).
+const LONDON_OPPONENTS = Object.freeze(Object.fromEntries([
+  ['londoner', 'londoner', 'Il londinese', 47, [['Chiacchiera sul meteo', 11, 'Venti minuti sulla pioggia di domani.'], ['Spallata in metro', 13, 'Mind the gap!']]],
+  ['guardia', 'guardia', 'La guardia reale', 55, [['Sguardo immobile', 10, 'Non sbatte le palpebre da tre ore.'], ['Colbacco pesante', 14, 'Un cappello che è praticamente un\'arma.']]],
+  ['londonTurista', 'turistaB', 'Turista con la guida', 45, [['Fatto curioso', 11, 'Lo sapevi che… sì, lo sapevi.'], ['Foto col Big Ben', 12, 'Il flash era acceso. Di giorno.']]],
+  ['londonSignora', 'nonna', 'La signora inglese', 48, [['Tè bollente', 13, 'Più bollente dell\'orgoglio britannico.'], ['Oh dear!', 10, 'Un sospiro così educato da fare male.']]],
+].map(([key, sprite, name, hp, moves]) => [key, Object.freeze({ key, sprite, name, hp, moves: Object.freeze(moves.map(([name, damage, text]) => Object.freeze({ name, damage, text, effect: null }))) })])));
+
+function battleOpponent(key) {
+  for (const table of [GIANICOLO_OPPONENTS, LONDON_OPPONENTS]) {
+    if (Object.prototype.hasOwnProperty.call(table, key)) return table[key];
+  }
+  return null;
+}
+
 const CURSE_TURNS = 2;     // turni di Francesca indeboliti dopo Bestemmia Lampo
 const CURSE_ATTACK = 0.35; // attacco di Francesca -65%
 const GUARD_DEFENSE = 0.5; // danni ricevuti da Simone dimezzati
@@ -30,10 +45,22 @@ const GIANICOLO_MOVES = Object.freeze([
   { name: 'Fuggi', description: 'Via con eleganza. Nessun contrattacco.' },
 ]);
 
+// Se combatte Simone: le sue mosse da avversario, rivolte al nemico.
+const SIMONE_FIGHTER_MOVES = Object.freeze([
+  { name: 'Abbraccione MAX', description: 'Una stretta da orso: 14–18 danni.' },
+  { name: 'Bestemmia Lampo', description: 'Attacco nemico -65% e difesa su per 2 turni.' },
+  { name: 'Scorreggia', description: 'Avvelena: -5% PS al nemico a ogni round.' },
+  { name: 'Fuggi', description: 'Via con eleganza. Nessun contrattacco.' },
+]);
+const FIGHTER_NAMES = Object.freeze({ francesca: 'Francesca', simone: 'Simone' });
+
 class GianicoloBattleState {
-  constructor(key, rng = Math.random) {
-    if (!Object.prototype.hasOwnProperty.call(GIANICOLO_OPPONENTS, key)) throw new Error('Avversario sconosciuto: ' + key);
-    this.opponent = GIANICOLO_OPPONENTS[key];
+  constructor(key, rng = Math.random, fighter = 'francesca') {
+    this.opponent = battleOpponent(key);
+    if (!this.opponent) throw new Error('Avversario sconosciuto: ' + key);
+    if (!FIGHTER_NAMES[fighter]) throw new Error('Combattente sconosciuto: ' + fighter);
+    this.fighter = fighter;
+    this.moves = fighter === 'simone' ? SIMONE_FIGHTER_MOVES : GIANICOLO_MOVES;
     this.rng = rng;
     this.playerMaxHP = this.playerHP = 100;
     this.enemyMaxHP = this.enemyHP = this.opponent.hp;
@@ -42,6 +69,10 @@ class GianicoloBattleState {
     this.weakTurns = 0;
     this.guardTurns = 0;
     this.poisoned = false;
+    // Effetti delle mosse di Simone quando combatte lui (contano gli attacchi nemici).
+    this.enemyWeakTurns = 0;
+    this.playerGuardTurns = 0;
+    this.enemyPoisoned = false;
     this.fled = false;
     this.turn = 'player';
   }
@@ -54,8 +85,23 @@ class GianicoloBattleState {
   playerMove(index) {
     if (!Number.isInteger(index) || index < 0 || index > 3) throw new RangeError('Mossa non valida');
     if (this.outcome || this.turn !== 'player') return { skipped: true, damage: 0, hits: [], buff: null, flee: this.fled, outcome: this.outcome };
-    const report = { index, name: GIANICOLO_MOVES[index].name, damage: 0, hits: [], buff: null, flee: false };
-    if (index === 0) {
+    const report = { index, name: this.moves[index].name, damage: 0, hits: [], buff: null, flee: false };
+    if (index === 3) {
+      this.fled = report.flee = true;
+    } else if (this.fighter === 'simone') {
+      if (index === 0) {
+        report.damage = this.roll(14, 18);
+        report.hits.push(report.damage);
+        report.appliedDamage = Math.min(this.enemyHP, report.damage);
+        this.enemyHP = Math.max(0, this.enemyHP - report.damage);
+      } else if (index === 1) {
+        report.buff = { type: 'curse', changed: !this.enemyWeakTurns };
+        this.enemyWeakTurns = this.playerGuardTurns = CURSE_TURNS;
+      } else {
+        report.buff = { type: 'poison', changed: !this.enemyPoisoned };
+        this.enemyPoisoned = true;
+      }
+    } else if (index === 0) {
       const count = this.roll(2, 5);
       const factor = Math.pow(1.5, this.spritsStacks) * (this.weakTurns ? CURSE_ATTACK : 1) * (this.guardTurns ? GUARD_DEFENSE : 1);
       for (let i = 0; i < count; i++) report.hits.push(Math.max(1, Math.round(this.roll(3, 5) * factor)));
@@ -69,8 +115,6 @@ class GianicoloBattleState {
     } else if (index === 2) {
       report.buff = { type: 'pretty', changed: !this.pretty, enemyAttack: 0.35 };
       this.pretty = true;
-    } else {
-      this.fled = report.flee = true;
     }
     // Gli effetti di Bestemmia Lampo durano un numero di turni di Francesca.
     if (this.weakTurns) this.weakTurns--;
@@ -91,8 +135,11 @@ class GianicoloBattleState {
     } else if (move.effect === 'poison') {
       this.poisoned = true;
     } else {
-      damage = Math.max(1, Math.round(move.damage * (this.pretty ? 0.35 : 1) * Math.pow(1.35, this.spritsStacks)));
+      damage = Math.max(1, Math.round(move.damage * (this.pretty ? 0.35 : 1) * Math.pow(1.35, this.spritsStacks)
+        * (this.enemyWeakTurns ? CURSE_ATTACK : 1) * (this.playerGuardTurns ? GUARD_DEFENSE : 1)));
     }
+    if (this.enemyWeakTurns) this.enemyWeakTurns--;
+    if (this.playerGuardTurns) this.playerGuardTurns--;
     const appliedDamage = Math.min(this.playerHP, damage);
     this.playerHP = Math.max(0, this.playerHP - damage);
     let poison = 0;
@@ -100,8 +147,13 @@ class GianicoloBattleState {
       poison = Math.min(this.playerHP, Math.round(this.playerMaxHP * POISON_RATIO));
       this.playerHP -= poison;
     }
+    let enemyPoison = 0;
+    if (this.enemyPoisoned && !this.outcome) {
+      enemyPoison = Math.min(this.enemyHP, Math.max(1, Math.round(this.enemyMaxHP * POISON_RATIO)));
+      this.enemyHP -= enemyPoison;
+    }
     this.turn = this.outcome ? 'done' : 'player';
-    return { name: move.name, text: move.text, effect: move.effect, damage, appliedDamage, poison, hits: damage ? [damage] : [], buff: null, flee: false, outcome: this.outcome };
+    return { name: move.name, text: move.text, effect: move.effect, damage, appliedDamage, poison, enemyPoison, hits: damage ? [damage] : [], buff: null, flee: false, outcome: this.outcome };
   }
 }
 
@@ -136,17 +188,57 @@ function battleBaseCanvas() {
 }
 
 class GianicoloBattle {
-  constructor(scene, npc) {
+  constructor(scene, npc, opts = {}) {
     this.scene = scene;
     this.npc = npc;
-    const key = typeof npc === 'string' ? npc : (npc?.key || npc?.ch?.key || npc?.sprite?.texture?.key);
-    this.state = new GianicoloBattleState(key);
+    const key = opts.opponent || (typeof npc === 'string' ? npc : (npc?.key || npc?.ch?.key || npc?.sprite?.texture?.key));
+    this.state = new GianicoloBattleState(key, Math.random, opts.fighter || 'francesca');
+    this.fighterName = FIGHTER_NAMES[this.state.fighter];
+    this.returnSong = opts.returnSong || SONGS.gianicolo;
+    this.background = opts.background || 'ninjaBg';
     this.dead = false;
     this.pending = new Set();
     this.tweens = new Set();
     this.cancelled = new Promise(resolve => { this.cancelRun = resolve; });
     this.onShutdown = () => this.destroy();
     scene.events.once('shutdown', this.onShutdown);
+  }
+
+  // "Parla / Sfida! / Annulla" davanti a un personaggio; con Sfida! si sceglie chi combatte.
+  // La scena deve avere challengeSession, battle, npcMenuTick (eseguito nel suo tick), exclaim e mover.
+  static async offer(scene, npc, original, opts = {}) {
+    if (scene.locked || scene.mover.moving) return;
+    const session = scene.challengeSession;
+    const profile = battleOpponent(opts.opponent || npc.key);
+    const alive = () => scene.sys.isActive() && scene.challengeSession === session;
+    scene.busy = true;
+    scene.exclaim.hide();
+    npc.ch.face(OPPOSITE[scene.player.dir]);
+    try {
+      const choice = await GianicoloBattle.choose(scene, profile.name, ['Parla', 'Sfida!', 'Annulla']);
+      if (!alive()) return;
+      if (choice === 0) {
+        if (original) await original();
+      } else if (choice === 1) {
+        // Simone non sfida se stesso.
+        const fighters = profile.key === 'simone' ? ['francesca'] : ['francesca', 'simone'];
+        let fighter = fighters[0];
+        if (fighters.length > 1) {
+          const pick = await GianicoloBattle.choose(scene, 'Chi combatte?', [...fighters.map(f => FIGHTER_NAMES[f]), 'Annulla']);
+          if (!alive() || pick < 0 || pick >= fighters.length) return;
+          fighter = fighters[pick];
+        }
+        scene.battle = new GianicoloBattle(scene, npc, { opponent: profile.key, fighter, returnSong: opts.returnSong, background: opts.background });
+        await scene.battle.run();
+      }
+    } finally {
+      if (scene.challengeSession === session) {
+        if (scene.battle) scene.battle.destroy();
+        scene.battle = null;
+        Controls.reset();
+        if (scene.sys.isActive() && (!opts.canUnlock || opts.canUnlock())) scene.busy = false;
+      }
+    }
   }
 
   // Il chiamante esegue npcMenuTick PRIMA di battle.update: un solo proprietario dell'input.
@@ -160,7 +252,7 @@ class GianicoloBattle {
     const text = (x, y, value, opts = {}) => {
       const t = addText(scene, x, y, value, { color: 0x2a1d1a, ...opts }); root.add(t); return t;
     };
-    const battleMenu = options === GIANICOLO_MOVES;
+    const battleMenu = options === GIANICOLO_MOVES || options === SIMONE_FIGHTER_MOVES;
     const cols = battleMenu ? 2 : 1;
     let index = 0, done = false, requested = false, ignoreUntil = 0;
     let prevDir = Controls.dir();
@@ -295,19 +387,19 @@ class GianicoloBattle {
     this.assertAlive();
     const S = this.scene;
     this.root = S.add.container(0, 0).setScrollFactor(0).setDepth(995);
-    this.root.add(S.add.image(0, 0, 'ninjaBg').setOrigin(0, 0));
+    this.root.add(S.add.image(0, 0, this.background).setOrigin(0, 0));
     // Basi ovali sotto i due personaggi, come nelle lotte Pokémon.
     if (!S.textures.exists('battleBase')) Pix.addTexture(S, 'battleBase', battleBaseCanvas());
     this.root.add(S.add.image(100, 186, 'battleBase').setScale(3));
     this.root.add(S.add.image(371, 118, 'battleBase').setScale(3));
-    this.fr = S.add.sprite(100, 188, 'francesca', 6).setOrigin(0.5, 1).setScale(3);
-    this.enemy = S.add.sprite(371, 120, this.state.opponent.key, 3).setOrigin(0.5, 1).setScale(3);
+    this.fr = S.add.sprite(100, 188, this.state.fighter, 6).setOrigin(0.5, 1).setScale(3);
+    this.enemy = S.add.sprite(371, 120, this.state.opponent.sprite || this.state.opponent.key, 3).setOrigin(0.5, 1).setScale(3);
     this.root.add([this.fr, this.enemy]);
     // Riquadri alti abbastanza per due righe di stati alterati.
     const panel = (x, y) => this.root.add(S.add.rectangle(x, y, 208, 62, 0xfbf3e4).setOrigin(0, 0).setStrokeStyle(2, 0x2a1d1a));
     panel(14, 6); panel(256, 126);
     this.text(22, 11, this.state.opponent.name);
-    this.text(264, 131, 'Francesca');
+    this.text(264, 131, this.fighterName);
     this.enemyPS = this.text(22, 23, ''); this.playerPS = this.text(264, 143, '');
     const bar = (x, y) => {
       this.root.add(S.add.rectangle(x, y, 190, 5, 0x473333).setOrigin(0, 0));
@@ -331,6 +423,9 @@ class GianicoloBattle {
     const enemy = [], player = [];
     if (s.pretty) enemy.push('Attacco -65%');
     if (s.guardTurns) enemy.push('Difesa + (' + s.guardTurns + ')');
+    if (s.enemyWeakTurns) enemy.push('Attacco -65% (' + s.enemyWeakTurns + ')');
+    if (s.enemyPoisoned) enemy.push('Veleno');
+    if (s.playerGuardTurns) player.push('Difesa + (' + s.playerGuardTurns + ')');
     if (s.spritsStacks) player.push('Sprits ' + s.spritsStacks + '/2: ATK+ DIF-');
     if (s.weakTurns) player.push('Attacco -65% (' + s.weakTurns + ')');
     if (s.poisoned) player.push('Avvelenata');
@@ -351,6 +446,38 @@ class GianicoloBattle {
       label.destroy();
     }
   }
+  // Le mosse di Simone quando combatte lui.
+  async simoneMove(index, report) {
+    const foe = this.state.opponent.name;
+    if (index === 0) {
+      const x = this.fr.x;
+      await this.guarded(this.animate({ targets: this.fr, x: x + 150, y: this.fr.y - 40, duration: 220, ease: 'Quad.In' }));
+      Audio8.sfx('hit');
+      const label = this.text(this.enemy.x, this.enemy.y - 74, '-' + report.damage, { color: 0xffe2a0, shadow: 0x2a1d1a, scale: 2, origin: [0.5, 0] });
+      await this.guarded(this.animate({ targets: this.enemy, alpha: 0.3, duration: 90, yoyo: true, repeat: 1 }));
+      label.destroy();
+      await this.guarded(this.animate({ targets: this.fr, x, y: 188, duration: 260, ease: 'Quad.Out' }));
+      this.refresh();
+      await this.say('Una stretta da orso: morbidissima, ma toglie il fiato. ' + report.damage + ' danni.');
+      return;
+    }
+    Audio8.sfx(index === 2 ? 'bump' : 'whoosh');
+    await this.guarded(this.animate({ targets: this.fr, y: this.fr.y - 10, duration: 110, yoyo: true, repeat: 1 }));
+    this.enemy.setTint(index === 2 ? 0x9ad25a : 0x8fa8e8);
+    await this.guarded(this.animate({ targets: this.enemy, alpha: 0.5, duration: 120, yoyo: true, repeat: 1 }));
+    this.enemy.clearTint();
+    this.refresh();
+    if (index === 1) {
+      await this.say(report.buff.changed
+        ? 'Un lampo di parole irripetibili! ' + foe + ' resta senza parole: attacco -65%. E Simone si sente invincibile.'
+        : 'Un\'altra bestemmia: l\'effetto dura di nuovo due turni.');
+    } else {
+      await this.say(report.buff.changed
+        ? 'Un attacco chimico silenzioso ma letale! ' + foe + ' respira la puzza e si avvelena.'
+        : 'La puzza è già nell\'aria. Non serve rincarare.');
+    }
+  }
+
   async play() {
     this.build();
     this.musicStarted = true;
@@ -358,7 +485,7 @@ class GianicoloBattle {
     await this.say(this.state.opponent.name + ' propone una sfida amichevole!');
     while (!this.state.outcome) {
       this.assertAlive();
-      const choice = GianicoloBattle.choose(this.scene, 'Cosa farà Francesca?', GIANICOLO_MOVES);
+      const choice = GianicoloBattle.choose(this.scene, 'Cosa farà ' + this.fighterName + '?', this.state.moves);
       this.menuTick = this.scene.npcMenuTick;
       let index;
       try {
@@ -367,9 +494,11 @@ class GianicoloBattle {
       this.assertAlive();
       if (index < 0) return { outcome: 'cancelled', state: this.state };
       const report = this.state.playerMove(index);
-      await this.say('Francesca usa ' + report.name + '!');
+      await this.say(this.fighterName + ' usa ' + report.name + '!');
       if (report.flee) break;
-      if (index === 0) {
+      if (this.state.fighter === 'simone') {
+        await this.simoneMove(index, report);
+      } else if (index === 0) {
         await this.pipas(report); this.refresh();
         await this.say(report.hits.length + ' colpi! ' + report.damage + ' danni. Le pipas non perdonano.');
       } else {
@@ -388,7 +517,7 @@ class GianicoloBattle {
         Audio8.sfx('hit');
         await this.guarded(this.animate({ targets: this.fr, alpha: 0.2, duration: 90, yoyo: true, repeat: 1 }));
         this.refresh();
-        await this.say(enemyReport.text + ' Francesca perde ' + enemyReport.damage + ' PS.');
+        await this.say(enemyReport.text + ' ' + this.fighterName + ' perde ' + enemyReport.damage + ' PS.');
       } else {
         // Mosse di stato: Simone saltella, Francesca si colora dell'effetto.
         Audio8.sfx(enemyReport.effect === 'poison' ? 'bump' : 'whoosh');
@@ -404,7 +533,14 @@ class GianicoloBattle {
         await this.guarded(this.animate({ targets: this.fr, alpha: 0.4, duration: 100, yoyo: true }));
         this.fr.clearTint();
         this.refresh();
-        await this.say('Il veleno fa effetto: Francesca perde ' + enemyReport.poison + ' PS.');
+        await this.say('Il veleno fa effetto: ' + this.fighterName + ' perde ' + enemyReport.poison + ' PS.');
+      }
+      if (enemyReport.enemyPoison) {
+        this.enemy.setTint(0x9ad25a);
+        await this.guarded(this.animate({ targets: this.enemy, alpha: 0.4, duration: 100, yoyo: true }));
+        this.enemy.clearTint();
+        this.refresh();
+        await this.say('La scorreggia fa ancora effetto. ' + this.state.opponent.name + ' perde ' + enemyReport.enemyPoison + ' PS.');
       }
     }
     const outcome = this.state.outcome;
@@ -447,7 +583,7 @@ class GianicoloBattle {
     Controls.reset();
     if (this.musicStarted) {
       this.musicStarted = false;
-      Audio8.playSong(SONGS.gianicolo);
+      Audio8.playSong(this.returnSong);
     }
   }
 }

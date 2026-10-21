@@ -31,7 +31,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   page.on('console',m=>{if(m.text().startsWith('SCELTA'))console.log(m.text())});
   async function click(x,y){const rect=await page.$eval('#game canvas',e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}});await (page.viewport().hasTouch?page.touchscreen.tap(rect.x+x/480*rect.w,rect.y+y/270*rect.h):page.mouse.click(rect.x+x/480*rect.w,rect.y+y/270*rect.h));await sleep(70)}
   async function pick(index,battle=false){await page.waitForFunction(()=>!!game.scene.getScene('Level1').npcMenuTick);await sleep(120);const {hits,confirm}=await page.evaluate(()=>{const t=game.scene.getScene('Level1').npcMenuTick;return {hits:t.hits,confirm:t.confirm}});await click(hits[index].x,hits[index].y);if(!battle)return; /* menu NPC compatto: il tocco sceglie subito */ assert.equal(await page.evaluate(()=>!!game.scene.getScene('Level1').npcMenuTick),true,'Il tap deve solo selezionare');await click(confirm.x,confirm.y)}
-  await pick(1);
+  async function challenge(fighter=0){await pick(1);if(fighter===null)return; /* contro Simone combatte solo Francesca */ await pick(fighter)}
+  await challenge(0);
   await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
   await page.screenshot({path:'/tmp/gianicolo-battle.png'});
   await page.evaluate(()=>{game.scene.getScene('Level1').tweens.timeScale=5});
@@ -55,21 +56,32 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // Ciascun personaggio è sfidabile; fuga e rivincita non cambiano la storia.
   for(const key of await page.evaluate(()=>Object.keys(GIANICOLO_OPPONENTS))){
    await page.evaluate(key=>{const s=game.scene.getScene('Level1');s.offerChallenge(s.challengeNPCs.find(n=>n.key===key),()=>Promise.resolve())},key);
-   await pick(1);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
+   await challenge(key==='simone'?null:0);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
    assert.equal(await page.evaluate(()=>game.scene.getScene('Level1').battle.state.playerHP),100);
    await pick(3,true);await until(()=>!game.scene.getScene('Level1').locked);
   }
   console.log('OK: sfida e fuga contro tutti i 10 NPC');
   // Vittoria naturale (niente PS nemici alterati) usando solo Spara Pipas.
   await page.evaluate(()=>{const s=game.scene.getScene('Level1');s.offerChallenge(s.nonna,()=>Promise.resolve())});
-  await pick(1);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
+  await challenge(0);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
   await page.evaluate(()=>window.testBattle=game.scene.getScene('Level1').battle);
   for(let i=0;i<12;i++){if(await page.evaluate(()=>!game.scene.getScene('Level1').locked))break;await pick(0,true);await until(()=>!!game.scene.getScene('Level1').npcMenuTick||!game.scene.getScene('Level1').locked)}
   assert.equal(await page.evaluate(()=>window.testBattle.state.outcome),'victory');
   console.log('OK: vittoria completa');
+  // Simone come combattente: le sue mosse e la sua vittoria.
+  await page.evaluate(()=>{const s=game.scene.getScene('Level1');s.offerChallenge(s.nonna,()=>Promise.resolve())});
+  await challenge(1);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
+  await page.evaluate(()=>window.testBattle=game.scene.getScene('Level1').battle);
+  assert.equal(await page.evaluate(()=>window.testBattle.state.fighter),'simone');
+  await page.screenshot({path:'/tmp/gianicolo-simone.png'});
+  await pick(2,true);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
+  assert.equal(await page.evaluate(()=>window.testBattle.state.enemyPoisoned),true);
+  for(let i=0;i<12;i++){if(await page.evaluate(()=>!game.scene.getScene('Level1').locked))break;await pick(0,true);await until(()=>!!game.scene.getScene('Level1').npcMenuTick||!game.scene.getScene('Level1').locked)}
+  assert.equal(await page.evaluate(()=>window.testBattle.state.outcome),'victory');
+  console.log('OK: Simone combatte e vince');
   // Perdita naturale ripetendo i buff, e ripresa senza game over.
   await page.evaluate(()=>{const s=game.scene.getScene('Level1');s.offerChallenge(s.simone,()=>Promise.resolve())});
-  await pick(1);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
+  await challenge(null);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
   await page.evaluate(()=>window.testBattle=game.scene.getScene('Level1').battle);
   for(let i=0;i<12;i++){if(await page.evaluate(()=>!game.scene.getScene('Level1').locked))break;await pick(1,true);await until(()=>!!game.scene.getScene('Level1').npcMenuTick||!game.scene.getScene('Level1').locked)}
   assert.equal(await page.evaluate(()=>window.testBattle.state.outcome),'defeat');
@@ -86,7 +98,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // Mobile: scelta con tap, conferma, fuga e cleanup durante un cambio livello.
   await page.setViewport({width:844,height:390,isMobile:true,hasTouch:true,isLandscape:true});
   await page.evaluate(()=>{const s=game.scene.getScene('Level1');try{s.scene.restart()}catch(e){console.log('RESTART',e.stack);throw e}});await sleep(500);await until(()=>!game.scene.getScene('Level1').locked);
-  await page.evaluate(()=>{const s=game.scene.getScene('Level1');s.offerChallenge(s.sindaco,()=>Promise.resolve())});await pick(1);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
+  await page.evaluate(()=>{const s=game.scene.getScene('Level1');s.offerChallenge(s.sindaco,()=>Promise.resolve())});await challenge(0);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
   assert.equal(await page.$eval('#touch',e=>e.style.visibility),'hidden');
   await page.screenshot({path:'/tmp/gianicolo-mobile.png'});
   await page.evaluate(()=>game.scene.getScene('Level1').scene.start('Level2'));await sleep(800);

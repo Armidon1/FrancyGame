@@ -572,30 +572,9 @@ class Level1Scene extends BaseScene {
     }
   }
 
-  async offerChallenge(npc, original) {
-    if (this.locked || this.mover.moving) return;
-    const session = this.challengeSession;
-    this.busy = true;
-    this.exclaim.hide();
-    npc.ch.face(OPPOSITE[this.player.dir]);
-    try {
-      const profile = GIANICOLO_OPPONENTS[npc.key];
-      const choice = await GianicoloBattle.choose(this, profile.name, ['Parla', 'Sfida!', 'Annulla']);
-      if (!this.sys.isActive() || this.challengeSession !== session) return;
-      if (choice === 0) {
-        if (original) await original();
-      } else if (choice === 1) {
-        this.battle = new GianicoloBattle(this, npc);
-        await this.battle.run();
-      }
-    } finally {
-      if (this.challengeSession !== session) return;
-      if (this.battle) this.battle.destroy();
-      this.battle = null;
-      Controls.reset();
-      // Il dialogo di Simone può aver avviato la sfida ninja: non sbloccarla.
-      if (this.sys.isActive() && !this.ninja && !this.leaving) this.busy = false;
-    }
+  offerChallenge(npc, original) {
+    // Il dialogo di Simone può aver avviato la sfida ninja: in quel caso non sbloccare.
+    return GianicoloBattle.offer(this, npc, original, { canUnlock: () => !this.ninja && !this.leaving });
   }
 
   addHearts() {

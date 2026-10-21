@@ -272,6 +272,30 @@ function drawGenericBuilding(ctx, x0, w, col) {
   }
 }
 
+// Sfondo delle sfide a Londra: cielo grigio-azzurro, tetti, Big Ben e il prato del parco.
+function buildLondonBattleBg(scene) {
+  const [c, ctx] = Pix.canvas(480, 270);
+  ditherGradient(ctx, 0, 0, 480, 176, ['#9fb4d4', '#c4d2e6', '#e6e2da']);
+  for (const [x, y, r] of [[70, 40, 14], [92, 36, 18], [116, 42, 12], [330, 58, 12], [350, 52, 16], [372, 60, 11]]) Pix.disc(ctx, x, y, r, '#f4f2ee');
+  const rnd = Pix.rng(5);
+  let x = 0;
+  while (x < 480) {
+    const w = 22 + Math.floor(rnd() * 30), top = 128 + Math.floor(rnd() * 30);
+    Pix.rect(ctx, x, top, w, 172 - top, rnd() < 0.5 ? '#a8a4b4' : '#9a96a8');
+    for (let wy = top + 5; wy < 166; wy += 9) for (let wx = x + 4; wx < x + w - 4; wx += 7) Pix.rect(ctx, wx, wy, 3, 4, '#c8c4d0');
+    x += w;
+  }
+  const ben = scene.textures.get('bigBen').getSourceImage();
+  ctx.drawImage(ben, 412 - ben.width, 172 - ben.height * 2, ben.width * 2, ben.height * 2);
+  // ringhiera nera e prato
+  Pix.rect(ctx, 0, 164, 480, 2, '#1e1a1e');
+  for (let fx = 2; fx < 480; fx += 6) Pix.rect(ctx, fx, 160, 2, 12, '#1e1a1e');
+  Pix.rect(ctx, 0, 172, 480, 98, '#7ab85a');
+  for (let y = 172; y < 270; y += 14) Pix.rect(ctx, 0, y + 7, 480, 7, '#6eac50');
+  for (let i = 0; i < 260; i++) Pix.px(ctx, Math.floor(rnd() * 480), 172 + Math.floor(rnd() * 98), rnd() < 0.5 ? '#5e9a42' : '#8ccc6a');
+  Pix.addTexture(scene, 'londonBattleBg', c);
+}
+
 function buildLondonArt(scene) {
   if (scene.textures.exists('london')) return;
   const W = L3_W * TILE;
@@ -871,6 +895,7 @@ class Level3Scene extends BaseScene {
     for (const col of Object.keys(this.gates)) for (let r = 7; r <= 10; r++) this.world.blocked.add(`${col},${r}`);
 
     this.addNPCs();
+    this.enableChallenges();
     this.addHUD();
     this.addRain();
     this.exclaim = new ExclaimMarker(this);
@@ -884,6 +909,12 @@ class Level3Scene extends BaseScene {
 
     Audio8.playSong(SONGS.london);
     this.busy = true;
+    this.events.once('shutdown', () => {
+      this.challengeSession = null;
+      if (this.battle) this.battle.destroy();
+      this.battle = null;
+      this.npcMenuTick = null;
+    });
     this.intro();
   }
 
@@ -972,6 +1003,14 @@ class Level3Scene extends BaseScene {
     this.busy = true;
     await this.wait(250);
     const s = this.simone;
+    // Simone si mette due passi a destra di Francesca, lontano dagli alberi: la scena si vede tutta.
+    const fol = this.mover.follower;
+    const home = { c: fol.c, r: fol.r };
+    const spot = [2, 3, 1].map(d => this.mover.c + d).find(c => this.world.isWalkable(c, this.mover.r) && !this.world.occupied.has(this.world.key(c, this.mover.r)));
+    if (spot !== undefined) {
+      await this.autoWalk(s, spot, this.mover.r, 50);
+      this.placeFollower(spot, this.mover.r, 'up');
+    }
     s.face('up');
     this.player.face(dirFromVector(s.x - this.player.x, s.y - this.player.y, 'left'));
     await this.talk([['Simone', 'Aspetta aspetta! Guarda quanti cigni! E gli scoiattoli!!']]);
@@ -1028,6 +1067,10 @@ class Level3Scene extends BaseScene {
       [null, 'E siete scoppiati a ridere, lì in mezzo al parco.'],
       ['Simone', 'Le Timberland erano nuove! …Andiamo a prendere questo caffè, va\'.'],
     ]);
+    if (spot !== undefined) {
+      await this.autoWalk(s, home.c, home.r, 50);
+      this.placeFollower(home.c, home.r, this.player.dir);
+    }
     flash.destroy();
     this.busy = false;
   }
@@ -1083,6 +1126,23 @@ class Level3Scene extends BaseScene {
     const ziiTalk = async () => { await this.talk([['Zia Dorota', 'More tea, love?']]); };
     W.setInteract(27, 25, ziiTalk);
     W.setInteract(31, 25, ziiTalk);
+  }
+
+  // I cittadini di Londra si possono sfidare (non chi serve alla storia: commessa, barista, zii).
+  enableChallenges() {
+    this.challengeSession = {};
+    this.battle = null;
+    this.npcMenuTick = null;
+    if (!this.textures.exists('londonBattleBg')) buildLondonBattleBg(this);
+    this.challengeNPCs = [];
+    for (const [npc, opponent] of [[this.londoner, 'londoner'], [this.guard1, 'guardia'], [this.guard2, 'guardia'],
+      [this.turista, 'londonTurista'], [this.signora, 'londonSignora']]) {
+      const key = this.world.key(npc.c, npc.r);
+      const original = this.world.interact.get(key);
+      this.challengeNPCs.push(npc);
+      this.world.setInteract(npc.c, npc.r, () => GianicoloBattle.offer(this, npc, original,
+        { opponent, returnSong: SONGS.london, background: 'londonBattleBg' }));
+    }
   }
 
   addHUD() {
@@ -1178,11 +1238,14 @@ class Level3Scene extends BaseScene {
       ['Simone', 'Mmh… sembra un\'idea folle e spiacevole…'],
       ['Simone', '…FACCIAMOLO!'],
       [null, 'Segui la freccia gialla: Simone ti viene dietro.'],
+      [null, 'Anche qui puoi sfidare i londinesi che incontri. E stavolta a combattere può andarci pure Simone!'],
     ]);
     this.busy = false;
   }
 
   tick(time) {
+    if (this.npcMenuTick) this.npcMenuTick();
+    if (this.battle) this.battle.update();
     const free = !this.locked;
     this.mover.update(time, free);
 

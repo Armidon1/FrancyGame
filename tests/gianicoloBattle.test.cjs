@@ -4,8 +4,8 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(require('node:path').join(__dirname, '../src/gianicoloBattle.js'), 'utf8') + '\nthis.State = GianicoloBattleState; this.profiles = GIANICOLO_OPPONENTS;', sandbox);
-const {State, profiles} = sandbox;
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname, '../src/gianicoloBattle.js'), 'utf8') + '\nthis.State = GianicoloBattleState; this.profiles = GIANICOLO_OPPONENTS; this.london = LONDON_OPPONENTS;', sandbox);
+const {State, profiles, london} = sandbox;
 assert.equal(Object.keys(profiles).length, 10);
 for (const [key, profile] of Object.entries(profiles)) {
  assert(profile.hp >= 42 && profile.hp <= 58);
@@ -66,4 +66,41 @@ for (const [key, profile] of Object.entries(profiles)) {
  const end = new State('simone', ()=>0.999999); end.playerHP = 5; end.playerMove(2); end.enemyMove();
  assert.equal(end.outcome, 'defeat');
 }
-console.log('OK: 10 avversari; multi-colpo, potenziamenti, limiti, turni, fuga, vittoria, sconfitta e reset; mosse speciali di Simone.');
+// Simone come combattente: Abbraccione MAX, Bestemmia Lampo, Scorreggia sul nemico.
+{
+ assert.throws(()=>new State('nonna', ()=>0, 'zio'));
+ const s = new State('nonna', ()=>0, 'simone');
+ assert.equal(s.moves.map(m=>m.name).join(), 'Abbraccione MAX,Bestemmia Lampo,Scorreggia,Fuggi');
+ const hug = s.playerMove(0); assert.equal(hug.damage, 14); assert.equal(s.enemyHP, 48 - 14);
+ const plain = s.enemyMove().damage; assert.equal(plain, 12);
+ // Bestemmia: attacco nemico -65% e difesa dimezzata per due attacchi nemici.
+ const c = s.playerMove(1); assert.equal(c.buff.changed, true); assert.equal(s.enemyWeakTurns, 2);
+ assert.equal(s.enemyMove().damage, Math.round(12 * 0.35 * 0.5)); assert.equal(s.enemyWeakTurns, 1);
+ s.playerMove(0); s.enemyMove(); assert.equal(s.enemyWeakTurns, 0); assert.equal(s.playerGuardTurns, 0);
+ // Scorreggia: -5% dei PS nemici (min 1) a ogni round, non cumulativo.
+ const p = new State('nonna', ()=>0, 'simone'); p.playerMove(2); const r = p.enemyMove();
+ assert.equal(r.enemyPoison, 2); assert.equal(p.enemyHP, 46);
+ assert.equal(p.playerMove(2).buff.changed, false);
+ // Il veleno può vincere da solo; la fuga funziona.
+ const v = new State('nonna', ()=>0, 'simone'); v.enemyHP = 2; v.playerMove(2); v.enemyMove(); assert.equal(v.outcome, 'victory');
+ const f = new State('nonna', ()=>0, 'simone'); f.playerMove(3); assert.equal(f.outcome, 'flee');
+ // Con Bestemmia + Scorreggia + abbracci Simone vince contro tutti, anche col caso peggiore.
+ for (const key of [...Object.keys(profiles).filter(k=>k!=='simone'), ...Object.keys(london)]) {
+  const w = new State(key, ()=>0, 'simone'); let t = 0;
+  w.playerMove(1); w.enemyMove(); w.playerMove(2); w.enemyMove();
+  while (!w.outcome && t++ < 30) { w.playerMove(w.enemyWeakTurns ? 0 : 1); w.enemyMove(); }
+  assert.equal(w.outcome, 'victory', key);
+ }
+}
+// Londra: 4 profili con sprite esistenti, combattibili da entrambi.
+{
+ assert.equal(Object.keys(london).join(), 'londoner,guardia,londonTurista,londonSignora');
+ for (const [key, profile] of Object.entries(london)) {
+  assert(profile.sprite); assert(profile.hp >= 42 && profile.hp <= 58);
+  assert(profile.moves.every(m => !m.effect && m.damage >= 10 && m.damage <= 16));
+  const win = new State(key, ()=>0); win.playerMove(2); win.enemyMove();
+  let turns=0; while(!win.outcome&&turns++<30){win.playerMove(0);win.enemyMove()}
+  assert.equal(win.outcome,'victory');
+ }
+}
+console.log('OK: 10 avversari; multi-colpo, potenziamenti, limiti, turni, fuga, vittoria, sconfitta e reset; mosse speciali di Simone; Simone combattente; avversari di Londra.');
