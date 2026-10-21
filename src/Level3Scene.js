@@ -2,7 +2,7 @@
 // Una lunga passeggiata da Kensington a Harrods, St James's Park, Buckingham Palace, Big Ben,
 // il caffè da 6 sterline, il Tamigi e finalmente la casa degli zii. Simone segue Francesca.
 
-// Legenda: ~ cielo  H edifici  D porta  s marciapiede  r strada  v/u fascia bassa  g prato  p vialetto
+// Legenda: ~ cielo  H edifici  D porta  s marciapiede  r strada (attraversabile)  u giardini in basso  g prato  p vialetto
 // w acqua  T albero  L lampione  B cabina telefonica  M cassetta postale  b panchina  c tavolino
 // P cancellata  q ponte (marciapiede)  x ponte (strada)  f ringhiera
 // Interni: # buio  Z muro  F pavimento  C tappeto  S scaffale  A bancone  o divano  h camino  y tavolino  e uscita
@@ -22,9 +22,9 @@ const L3_MAP = [
   'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrxxxxxxxxxxrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr', // 12
   'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrxxxxxxxxxxrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr', // 13
   'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrxxxxxxxxxxrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr', // 14
-  'vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvwwwwwwwwwwvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv', // 15
-  'uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuwwwwwwwwwwuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu', // 16
-  'uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuwwwwwwwwwwuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu', // 17
+  'fssLssssssLssssssssssssssssssssLssssssLssssssLssssssLssssssLssssssLssssssLssssssLssssssLssssssLssssssLssssssLssssssLsswwwwwwwwwwssssssssssssssssssssssLssssssLssssssLssssssLsssf', // 15
+  'fssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssswwwwwwwwwwsssssssssssssssssssssssssssssssssssssssssssssssf', // 16
+  'fssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssswwwwwwwwwwsssssssssssssssssssssssssssssssssssssssssssssssf', // 17
   'uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuwwwwwwwwwwuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu', // 18
   '################################################################################################################################################################################', // 19
   '##ZZZZZZZZZZZZZZZ#####ZZZZZZZZZZZZZZZ###########################################################################################################################################', // 20
@@ -40,7 +40,7 @@ const L3_MAP = [
   '################################################################################################################################################################################', // 30
 ];
 
-const L3_WALK = 'sgpqFCe';
+const L3_WALK = 'sgpqFCerx';
 const L3_W = 176;
 const L3_OUT_ROWS = 19;
 const L3_GOAL = 40000;
@@ -336,20 +336,28 @@ function buildLondonArt(scene) {
   // marciapiede: bordo verso la strada
   Pix.rect(ctx, 0, roadY - 2, W, 2, '#a8a094');
 
-  // fascia bassa: giardini, ringhiere, siepi
-  const lowY = 16 * TILE;
+  // "LOOK RIGHT" dipinto vicino alle strisce, come a Londra (per chi scende dal marciapiede)
+  for (const zx of [20 * TILE, 140 * TILE]) {
+    const tw = glyphTextWidth('LOOK RIGHT');
+    for (const [x, y] of [[zx - tw - 6, roadY + 9], [zx + 34, roadY + 9], [zx - tw - 6, roadY + 48], [zx + 34, roadY + 48]]) {
+      drawGlyphText(ctx, 'LOOK RIGHT', x, y, '#e8e2d0');
+    }
+  }
+  // marciapiede in basso: bordo verso la strada
+  Pix.rect(ctx, 0, 15 * TILE, W, 2, '#a8a094');
+
+  // fascia bassa: ringhiere, siepi e aiuole oltre il marciapiede largo
+  const lowY = 18 * TILE;
   for (let x = 0; x < W; x += 16) {
     const colI = Math.floor(x / 16);
-    if (colI >= 118 && colI <= 127) continue;
-    if (!(colI >= 44 && colI <= 87)) {
+    if (colI >= 118 && colI <= 129) continue;
+    const park = colI >= 44 && colI <= 87;
+    if (!park) {
       Pix.rect(ctx, x, lowY + 2, 16, 1, '#1e1e26');
       for (let k = 0; k < 16; k += 3) Pix.rect(ctx, x + k, lowY, 1, 8, '#1e1e26');
-      if (rnd() < 0.6) { Pix.disc(ctx, x + 8, lowY + 16, 6, '#3f7a3a'); Pix.rect(ctx, x + 4, lowY + 11, 6, 1, '#56944a'); }
-      if (rnd() < 0.3) for (let k = 0; k < 4; k++) Pix.px(ctx, x + 3 + k * 3, lowY + 26, ['#e8506a', '#f2c14e', '#ffffff'][k % 3]);
-    } else {
-      if (rnd() < 0.35) { Pix.disc(ctx, x + 8, lowY + 20, 8, '#2f5a34'); Pix.disc(ctx, x + 6, lowY + 18, 5, '#4f8e44'); }
-      if (colI >= 66 && rnd() < 0.5) for (let k = 0; k < 5; k++) Pix.rect(ctx, x + 2 + k * 3, lowY + 34, 2, 3, '#e8506a');
     }
+    if (rnd() < (park ? 0.7 : 0.5)) { Pix.disc(ctx, x + 8, lowY + 13, 6, park ? '#2f5a34' : '#3f7a3a'); Pix.rect(ctx, x + 4, lowY + 9, 6, 1, '#56944a'); }
+    if (rnd() < 0.3) for (let k = 0; k < 4; k++) Pix.px(ctx, x + 3 + k * 3, lowY + 12, ['#e8506a', '#f2c14e', '#ffffff'][k % 3]);
   }
 
   // --- Edifici ---
@@ -746,6 +754,30 @@ function buildLondonArt(scene) {
     '..KKKKKK....',
     '............',
   ], { '.': null, K: '#2a1d1a', W: '#f4f0e8', p: '#e8506a' }));
+  // il sigaro Capitol trovato davanti al Big Ben
+  Pix.addTexture(scene, 'itemCigar', Pix.gridCanvas([
+    '............',
+    '............',
+    '............',
+    '............',
+    '.KKKKKKKKKK.',
+    'KbBBYYrYBBBK',
+    'KBBbYrYYBbBK',
+    'KbBBYYYYBBbK',
+    '.KKKKKKKKKK.',
+    '............',
+    '............',
+    '............',
+  ], { '.': null, K: '#2a1d1a', B: '#7a4a2a', b: '#5e3820', Y: '#f2c14e', r: '#c8323a' }));
+  Pix.addSheet(scene, 'pigeon', Pix.gridCanvas([
+    '...KK....' + '.........',
+    '..KGGK...' + 'KK.....KK',
+    '..KGEKY..' + 'KGK...KGK',
+    '.KGGGK...' + '.KGKKKGK.',
+    'KGGgGGK..' + '..KGGEKY.',
+    'KGGGGGK..' + '...KGGK..',
+    '.KKYKK...' + '....KK...',
+  ], { '.': null, K: '#2a2a32', G: '#8a8a9a', g: '#5a8a7a', E: '#e8a03a', Y: '#d8783a' }), 9, 7);
   Pix.addTexture(scene, 'arrow', Pix.gridCanvas([
     'KK.......',
     'KRKK.....',
@@ -892,7 +924,14 @@ class Level3Scene extends BaseScene {
     this.bubbles = [];
     this.bumpCooldown = 0;
     this.gates = { 43: 1, 117: 2 }; // colonna -> tappa necessaria per passare
-    for (const col of Object.keys(this.gates)) for (let r = 7; r <= 10; r++) this.world.blocked.add(`${col},${r}`);
+    for (const col of Object.keys(this.gates)) for (let r = 7; r <= 17; r++) this.world.blocked.add(`${col},${r}`);
+    // strada e marciapiede in basso chiusi finché non è passata la scena di quel tratto (si passa dal marciapiede in alto)
+    this.sceneGates = { 52: 'Passiamo dal parco, dai! Voglio vedere gli scoiattoli!', 84: 'Il bar è di là, sul marciapiede di sopra. Andiamo!',
+      162: 'Gli zii abitano sul marciapiede di sopra, Picci. Torniamo su.' };
+    for (const col of Object.keys(this.sceneGates)) for (let r = 11; r <= 17; r++) this.world.blocked.add(`${col},${r}`);
+    this.checkpoint = { c: 2, r: 8 };
+    this.carHits = 0;
+    this.vehicles = [];
 
     this.addNPCs();
     this.enableChallenges();
@@ -902,7 +941,7 @@ class Level3Scene extends BaseScene {
     this.arrow = this.add.image(0, 0, 'arrow').setScrollFactor(0).setDepth(940).setVisible(false);
 
     this.setOutdoorCamera();
-    this.vehicleTimer = this.time.addEvent({ delay: 2600, loop: true, callback: () => this.spawnVehicle() });
+    this.vehicleTimer = this.time.addEvent({ delay: 2200, loop: true, callback: () => this.spawnVehicle() });
     this.spawnVehicle(true);
     this.walkers = [];
     this.time.addEvent({ delay: 3500, loop: true, callback: () => this.spawnWalker() });
@@ -962,12 +1001,13 @@ class Level3Scene extends BaseScene {
         }
       }
     }
-    // lampioni decorativi sul marciapiede in basso
-    for (let c = 3; c < L3_W; c += 7) {
-      if (c >= 118 && c <= 127) continue;
-      this.add.image(c * TILE + 8, 15 * TILE + 14, 'lampLondon').setOrigin(0.5, 1).setDepth(10 + 15 * TILE);
-    }
     this.add.image(114 * TILE + 8, 7 * TILE, 'bigBen').setOrigin(0.5, 1).setDepth(depthAt(6));
+    // piccioni che beccano davanti al Big Ben
+    this.pigeons = [[110, 9], [112, 10], [116, 9], [113, 8]].map(([c, r], i) => {
+      const g = this.add.sprite(c * TILE + 4 + i * 3, r * TILE + 10, 'pigeon', 0).setDepth(depthAt(r) - 2).setFlipX(i % 2 === 1);
+      this.tweens.add({ targets: g, y: g.y + 1, duration: 260 + i * 40, yoyo: true, repeat: -1, delay: i * 90 });
+      return g;
+    });
     // tantissimi cigni sul laghetto di St James's Park
     for (let i = 0; i < 9; i++) {
       const sx = 51 * TILE + (i % 5) * 26 + (i > 4 ? 12 : 0);
@@ -1000,6 +1040,7 @@ class Level3Scene extends BaseScene {
   // Il ricordo del parco: foto ai cigni e lo scoiattolo sulle Timberland
   async squirrelScene() {
     this.squirrelDone = true;
+    this.openSceneGate(52);
     this.busy = true;
     await this.wait(250);
     const s = this.simone;
@@ -1085,17 +1126,8 @@ class Level3Scene extends BaseScene {
     let tries = 0;
     W.setInteract(71, 6, async () => {
       tries++;
-      if (tries === 1) {
-        await this.talk([
-          [null, 'La guardia non muove un muscolo.'],
-          ['Simone', 'Scommetto che la faccio ridere.'],
-          ['Simone', 'Ehi! Lo sai qual è il colmo per una guardia? …Non avere la guardia alta!'],
-          [null, '…'],
-          [null, 'Non ride.'],
-        ]);
-      } else {
-        await this.talk([[null, 'La guardia continua a non muovere un muscolo. Professionisti.']]);
-      }
+      if (tries === 1) await this.guardScene();
+      else await this.talk([[null, 'La guardia non muove un muscolo. Però da quando è passato Simone trattiene il respiro.']]);
     });
     this.guard2 = W.placeNPC(this, 'guardia', 81, 6, 'down');
     W.setInteract(81, 6, async () => { await this.talk([[null, 'Neanche questa guardia si muove. Ma ti è sembrato che ti abbia fatto l\'occhiolino?']]); });
@@ -1112,6 +1144,81 @@ class Level3Scene extends BaseScene {
 
     this.signora = W.placeNPC(this, 'nonna', 150, 8, 'down');
     W.setInteract(150, 8, talk(this.signora, [['Signora', 'Oh dear, you look tired! Not far now, sweetheart.']]));
+
+    // Big Ben: i rintocchi, un selfie e qualche chiacchiera
+    this.benTalks = 0;
+    for (const c of [113, 114, 115]) W.setInteract(c, 6, () => this.bigBenScene());
+    // il sigaro Capitol, per terra sotto la pioggia
+    this.cigar = this.add.image(111 * TILE + 8, 7 * TILE + 11, 'itemCigar').setDepth(10 + 7 * TILE + 8);
+    this.cigarSpark = this.add.image(111 * TILE + 12, 7 * TILE + 6, 'sparkle').setDepth(10 + 7 * TILE + 9).setScale(0.6);
+    this.tweens.add({ targets: this.cigarSpark, alpha: 0.1, scale: 0.3, duration: 500, yoyo: true, repeat: -1 });
+    W.blocked.add('111,7');
+    W.setInteract(111, 7, () => this.cigarScene());
+
+    // Celebrità sul marciapiede in basso, di là dalla strada
+    const celeb = (key, c, dir, lines) => {
+      const npc = W.placeNPC(this, key, c, 16, dir);
+      W.setInteract(c, 16, async () => { npc.ch.face(OPPOSITE[this.player.dir]); await this.talk(lines); });
+      return npc;
+    };
+    this.celebs = [
+      [celeb('paddington', 8, 'down', [
+        ['Paddington', 'Buongiorno! Gradisce un panino alla marmellata? Ne tengo sempre uno sotto il cappello, per le emergenze.'],
+        ['Simone', 'Picci, guarda! Un orsacchiotto col cappotto!'],
+        ['Paddington', 'Mi permetta: anche lei ne ha uno accanto. Lo tratti bene, è una specie rara.'],
+        ['Simone', '…Ha ragione l\'orso.'],
+      ]), 'paddington'],
+      [celeb('mrBean', 30, 'down', [
+        [null, 'Mr Bean non dice una parola. Ti mostra il suo orsacchiotto, Teddy.'],
+        [null, 'Poi guarda Simone. Poi guarda te. Ti fa l\'occhiolino.'],
+        [null, 'Il messaggio è chiaro: anche tu hai il tuo Teddy.'],
+        ['Simone', 'Perché mi fissa così?'],
+      ]), 'mrBean'],
+      [celeb('sherlock', 57, 'down', [
+        ['Sherlock', 'Interessante. Scarpe consumate, polpacci in fiamme, e un uomo che la segue a un passo esatto di distanza.'],
+        ['Sherlock', 'Deduzione: state attraversando Londra a piedi. Per scelta. Per scelta di lei.'],
+        ['Simone', 'Come ha fatto?!'],
+        ['Sherlock', 'Elementare. La signorina è innamorata di Londra, e il giovanotto è innamorato di lei. Altrimenti sareste in metro.'],
+      ]), 'sherlock'],
+      [celeb('maryPoppins', 68, 'down', [
+        ['Mary Poppins', 'Che tempo delizioso! Basta un ombrello e un po\' di pioggia, e tutto diventa più bello.'],
+        ['Mary Poppins', 'E lei, cara, è praticamente perfetta sotto ogni aspetto.'],
+        ['Simone', 'Lo dico sempre anch\'io!'],
+        ['Mary Poppins', 'Lei invece, giovanotto, è praticamente… presente. Che è già molto.'],
+      ]), 'maryPoppins'],
+      [celeb('deSica', 79, 'down', [
+        ['Christian De Sica', 'Aò! Che ce fate a Londra sotto \'st\'acqua? Pure io: sto a girà "Natale a Buckingham".'],
+        ['Simone', 'Ma… è Christian De Sica?!'],
+        ['Christian De Sica', 'In carne, ossa e cappotto de cammello. Ma che, siete venuti da Roma a piedi?'],
+        ['Francesca', 'Quasi. Quarantamila passi.'],
+        ['Christian De Sica', 'Ma che sete matti?! …Però bella coppia, eh.'],
+        ['Christian De Sica', 'Tienitelo stretto \'sto ragazzo: uno che te segue sotto la pioggia nun se trova a ogni angolo.'],
+      ]), 'deSica'],
+      [celeb('hughGrant', 97, 'right', [
+        ['Hugh Grant', 'Oh, ehm, scusate, terribilmente… sapete per caso da che parte è Notting Hill? Ho una libreria da aprire.'],
+        ['Simone', 'Ehm… sorry, siamo di Roma.'],
+        ['Hugh Grant', 'Ah. Splendido. Anch\'io mi perdo sempre. È una cosa molto inglese.'],
+      ]), 'hughGrant'],
+      [celeb('julia', 98, 'left', [
+        ['Julia Roberts', 'Sono solo una ragazza… che sta davanti a un ragazzo… e gli chiede di amarla.'],
+        [null, 'Julia Roberts sta provando la battuta più famosa di Notting Hill. Hugh Grant annuisce, commosso.'],
+        ['Francesca', 'Che bella frase.'],
+        ['Simone', 'A me non hai dovuto chiederlo. Al Gianicolo avevo già capito tutto.'],
+      ]), 'julia'],
+      [celeb('harryPotter', 134, 'down', [
+        ['Harry Potter', 'Scusate, sapete dov\'è il binario 9 e 3/4? Ho perso il treno per Hogwarts.'],
+        ['Simone', 'Noi veramente non prendiamo nessun mezzo. Andiamo a piedi.'],
+        ['Harry Potter', 'A piedi? E fino a dove?'],
+        ['Francesca', 'Dagli zii. Dall\'altra parte di Londra.'],
+        ['Harry Potter', '…Questi Babbani sono matti.'],
+      ]), 'harryPotter'],
+      [celeb('beckham', 146, 'down', [
+        ['David Beckham', 'Hey! Vi insegno il tiro a giro? Piede aperto, colpisci di lato… e la palla curva così.'],
+        [null, 'Beckham disegna una curva perfetta nell\'aria.'],
+        ['Simone', 'Come la nostra camminata di oggi: tutta curve, ma alla fine arriviamo in porta.'],
+        ['David Beckham', 'Bend it like… you two. Lovely.'],
+      ]), 'beckham'],
+    ];
 
     // Porte
     W.setInteract(34, 6, () => this.enterHarrods());
@@ -1136,7 +1243,7 @@ class Level3Scene extends BaseScene {
     if (!this.textures.exists('londonBattleBg')) buildLondonBattleBg(this);
     this.challengeNPCs = [];
     for (const [npc, opponent] of [[this.londoner, 'londoner'], [this.guard1, 'guardia'], [this.guard2, 'guardia'],
-      [this.turista, 'londonTurista'], [this.signora, 'londonSignora']]) {
+      [this.turista, 'londonTurista'], [this.signora, 'londonSignora'], ...this.celebs.map(([npc, key]) => [npc, key])]) {
       const key = this.world.key(npc.c, npc.r);
       const original = this.world.interact.get(key);
       this.challengeNPCs.push(npc);
@@ -1193,18 +1300,122 @@ class Level3Scene extends BaseScene {
     return new Promise(r => this.time.delayedCall(ms, r));
   }
 
-  // Autobus rossi e taxi neri che passano sulla strada
+  // Autobus rossi e taxi neri che passano sulla strada (si guida a sinistra: verso est la corsia in alto)
   spawnVehicle(initial) {
     if (this.inside) return;
     const cam = this.cameras.main;
     const east = Math.random() < 0.5;
     const type = Math.random() < 0.55 ? 'bus' : 'taxi';
+    const w = type === 'bus' ? 60 : 34;
     const y = east ? 12 * TILE + 13 : 14 * TILE + 13;
     const x = initial ? cam.scrollX + 100 + Math.random() * 280 : (east ? cam.scrollX - 70 : cam.scrollX + 550);
-    const v = this.add.image(x, y, type).setOrigin(0.5, 1).setDepth(10 + y).setFlipX(!east);
-    const speed = (type === 'bus' ? 70 : 105) * (east ? 1 : -1);
-    const dist = 900;
-    this.tweens.add({ targets: v, x: x + speed / Math.abs(speed) * dist, duration: dist / Math.abs(speed) * 1000, onComplete: () => v.destroy() });
+    if (this.vehicles.some(o => o.east === east && Math.abs(o.img.x - x) < (o.w + w) / 2 + 24)) return;
+    const img = this.add.image(x, y, type).setOrigin(0.5, 1).setDepth(10 + y).setFlipX(!east);
+    this.vehicles.push({ img, east, w, speed: type === 'bus' ? 70 : 105, travelled: 0 });
+  }
+
+  // Corsia in cui stanno i piedi di un personaggio: true = verso est (in alto), false = verso ovest, null = marciapiede
+  laneAt(y) {
+    if (y >= 11 * TILE + 6 && y < 13 * TILE + 5) return true;
+    if (y >= 13 * TILE + 5 && y <= 14 * TILE + 22) return false;
+    return null;
+  }
+
+  updateVehicles(dt) {
+    if (this.inside) {
+      this.vehicles.forEach(v => v.img.destroy());
+      this.vehicles = [];
+      return;
+    }
+    const people = [this.player, this.simone];
+    // alle strisce si fermano se qualcuno attraversa o aspetta sul bordo
+    const zebras = [20 * TILE, 140 * TILE].filter(zx => people.some(p => p.x > zx - 4 && p.x < zx + 36 && p.y > 10 * TILE + 8 && p.y < 15 * TILE + 16));
+    for (const v of this.vehicles) {
+      const dirX = v.east ? 1 : -1;
+      const front = v.img.x + dirX * v.w / 2;
+      let move = v.speed * dt;
+      for (const zx of zebras) {
+        const line = v.east ? zx - 6 : zx + 34;
+        const gap = (line - front) * dirX;
+        if (gap >= 0) move = Math.min(move, gap);
+      }
+      // durante un dialogo nessuno investe nessuno: ci si ferma davanti a chi è in corsia
+      if (this.locked) {
+        for (const p of people) {
+          if (this.laneAt(p.y) !== v.east) continue;
+          const gap = (p.x - dirX * 12 - front) * dirX;
+          if (gap >= -4) move = Math.min(move, Math.max(0, gap));
+        }
+      }
+      for (const o of this.vehicles) {
+        if (o === v || o.east !== v.east || (o.img.x - v.img.x) * dirX <= 0) continue;
+        const gap = (o.img.x - dirX * o.w / 2 - front) * dirX - 10;
+        move = Math.min(move, Math.max(0, gap));
+      }
+      v.img.x += dirX * move;
+      v.travelled += move;
+    }
+    this.vehicles = this.vehicles.filter((v) => {
+      if (v.travelled < 1100) return true;
+      v.img.destroy();
+      return false;
+    });
+    if (this.hitting || this.locked) return;
+    for (const p of people) {
+      const lane = this.laneAt(p.y);
+      if (lane === null) continue;
+      if (zebras.some(zx => p.x > zx - 2 && p.x < zx + 34)) continue; // sulle strisce si è al sicuro
+      const v = this.vehicles.find(o => o.east === lane && Math.abs(o.img.x - p.x) < o.w / 2 + 3);
+      if (v) { this.carHit(p); return; }
+    }
+  }
+
+  // Investiti (con delicatezza): stelline, giravolta e si riparte dall'ultimo marciapiede
+  async carHit(victim) {
+    this.hitting = true;
+    this.busy = true;
+    const f = this.player, s = this.simone, fol = this.mover.follower;
+    this.tweens.killTweensOf(f);
+    this.tweens.killTweensOf(s);
+    this.mover.moving = false;
+    fol.moving = false;
+    this.exclaim.hide();
+    Audio8.tone(415, 0.16, { type: 'square', vol: 0.09 });
+    Audio8.tone(330, 0.24, { type: 'square', vol: 0.09, delay: 0.18 });
+    Audio8.sfx('fall');
+    this.cameras.main.shake(250, 0.008);
+    const stars = [0, 1, 2].map(() => this.add.image(victim.x, victim.y - 26, 'star').setDepth(2000));
+    const orbit = { a: 0 };
+    this.tweens.add({ targets: orbit, a: Math.PI * 6, duration: 1100,
+      onUpdate: () => stars.forEach((st, i) => st.setPosition(victim.x + Math.cos(orbit.a + i * 2.1) * 9, victim.y - 26 + Math.sin(orbit.a + i * 2.1) * 3)) });
+    const dirs = ['down', 'left', 'up', 'right'];
+    for (let i = 0; i < 12; i++) { victim.face(dirs[i % 4]); await this.wait(80); }
+    stars.forEach(st => st.destroy());
+    await this.fade(true);
+    const cp = this.checkpoint;
+    this.mover.teleport(cp.c, cp.r, 'down');
+    const spot = [[-1, 0], [1, 0], [0, -1], [0, 1], [-2, 0], [2, 0]].map(([dc, dr]) => ({ c: cp.c + dc, r: cp.r + dr }))
+      .find(t => this.world.isWalkable(t.c, t.r) && this.laneAt(tileFeet(t.c, t.r).y) === null);
+    if (spot) this.placeFollower(spot.c, spot.r, 'down');
+    else this.placeFollower(cp.c, cp.r, 'down');
+    this.cameras.main.centerOn(f.x, f.y);
+    await this.fade(false);
+    this.carHits++;
+    if (this.carHits === 1) {
+      await this.talk(victim === s ? [
+        ['Simone', 'Tutto ok, tutto ok! Mi ha preso solo… tutto.'],
+        ['Simone', 'Qui guidano a SINISTRA, le macchine arrivano dalla parte sbagliata. Sulle strisce però si fermano!'],
+      ] : [
+        ['Simone', 'Picci! Tutto bene?! Ti sei fatta male?'],
+        ['Simone', 'Qui guidano a SINISTRA, le macchine arrivano dalla parte sbagliata. Attraversiamo sulle strisce, lì si fermano.'],
+        ['Simone', '…Mi hai fatto prendere un colpo. Io ti voglio intera.'],
+      ]);
+    } else {
+      const lines = ['Le strisce, Picci! Le strisce!', 'Guarda a destra! No, a sinistra! …Guarda ovunque!', 'Mind the gap… e anche i bus.', 'Ancora?! Il mio cuore…'];
+      this.sayBubble(s, lines[(this.carHits - 2) % lines.length], 2400);
+    }
+    this.hitting = false;
+    this.busy = false;
   }
 
   spawnWalker() {
@@ -1214,7 +1425,7 @@ class Level3Scene extends BaseScene {
     const keys = ['fanA', 'fanB', 'fanC', 'fanD', 'londoner', 'turistaA', 'kidB', 'kidC'];
     const key = keys[Math.floor(Math.random() * keys.length)];
     const x = right ? cam.scrollX - 20 : cam.scrollX + 500;
-    const ch = new Character(this, key, x, 15 * TILE + 13, right ? 'right' : 'left');
+    const ch = new Character(this, key, x, 17 * TILE + 13, right ? 'right' : 'left');
     ch.walk(right ? 'right' : 'left', 0.8);
     this.tweens.add({ targets: ch, x: x + (right ? 560 : -560), duration: 560 / 34 * 1000, onUpdate: () => ch.sync(), onComplete: () => ch.destroy() });
   }
@@ -1238,6 +1449,7 @@ class Level3Scene extends BaseScene {
       ['Simone', 'Mmh… sembra un\'idea folle e spiacevole…'],
       ['Simone', '…FACCIAMOLO!'],
       [null, 'Segui la freccia gialla: Simone ti viene dietro.'],
+      [null, 'Di là dalla strada c\'è un marciapiede pieno di gente famosa. Ma attenta: qui guidano a sinistra! Attraversa sulle strisce.'],
       [null, 'Anche qui puoi sfidare i londinesi che incontri. E stavolta a combattere può andarci pure Simone!'],
     ]);
     this.busy = false;
@@ -1256,13 +1468,15 @@ class Level3Scene extends BaseScene {
       return true;
     });
 
-    // pioggerella tra Buckingham Palace e Westminster
-    if (!this.inside) this.setRain(this.mover.c >= 67 && this.mover.c <= 100);
+    const dt = Math.min(this.game.loop.delta, 50) / 1000;
+    this.updateVehicles(dt);
+
+    // pioggerella tra Buckingham Palace e il Big Ben
+    if (!this.inside) this.setRain(this.mover.c >= 67 && this.mover.c <= 117);
     if (this.raining) {
-      const dt = Math.min(this.game.loop.delta, 50) / 1000;
       for (const d of this.rainDrops) {
         d.y += d.speed * dt;
-        d.x -= d.speed * 0.25 * dt;
+        d.x -= d.speed * (this.windy ? 1.1 : 0.25) * dt;
         if (d.y > 275) { d.y = -8; d.x = Math.random() * 520; }
       }
     }
@@ -1309,9 +1523,11 @@ class Level3Scene extends BaseScene {
       if (r === 7) this.arriveAtDoor();
       return;
     }
-    if (this.stage === 1 && !this.squirrelDone && c >= 53 && c <= 64) this.squirrelScene();
-    if (this.stage === 1 && !this.stepDone && c >= 85 && c <= 89) this.giveUpScene();
-    if (this.stage === 2 && !this.finalDone && c >= 163) this.finalApproach();
+    if (this.laneAt(tileFeet(c, r).y) === null) this.checkpoint = { c, r };
+    if (this.stage === 1 && !this.squirrelDone && r <= 10 && c >= 53 && c <= 64) this.squirrelScene();
+    if (this.stage === 1 && !this.stepDone && r <= 10 && c >= 85 && c <= 89) this.giveUpScene();
+    if (this.stage === 2 && !this.finalDone && r <= 10 && c >= 163) this.finalApproach();
+    if (!this.pigeonsGone && Math.abs(c - 113) <= 4 && r >= 7 && r <= 10) this.scarePigeons();
     const mult = this.tired ? 34 + Math.random() * 12 : 22 + Math.random() * 9;
     this.steps = Math.min(39000, this.steps + mult);
     this.updateSteps();
@@ -1330,6 +1546,11 @@ class Level3Scene extends BaseScene {
   }
 
   async onBump(c, r) {
+    if (this.sceneGates[c] && r >= 11 && this.world.blocked.has(`${c},${r}`) && !this.locked && this.time.now >= this.bumpCooldown) {
+      this.bumpCooldown = this.time.now + 1500;
+      await this.say('Simone', this.sceneGates[c]);
+      return;
+    }
     const need = this.gates[c];
     if (!need || this.stage >= need || this.time.now < this.bumpCooldown || this.locked) return;
     this.bumpCooldown = this.time.now + 1500;
@@ -1341,8 +1562,180 @@ class Level3Scene extends BaseScene {
   setStage(n) {
     this.stage = n;
     for (const [col, need] of Object.entries(this.gates)) {
-      if (n >= need) for (let r = 7; r <= 10; r++) this.world.blocked.delete(`${col},${r}`);
+      if (n >= need) for (let r = 7; r <= 17; r++) this.world.blocked.delete(`${col},${r}`);
     }
+  }
+
+  openSceneGate(col) {
+    for (let r = 11; r <= 17; r++) this.world.blocked.delete(`${col},${r}`);
+  }
+
+  // Davanti a Buckingham Palace: Simone prova a far ridere la guardia con la sua arma segreta
+  async guardScene() {
+    this.busy = true;
+    const s = this.simone;
+    const g = this.guard1.ch;
+    await this.talk([
+      [null, 'La guardia non muove un muscolo.'],
+      ['Simone', 'Lascia fare a me. Ho un\'arma segreta.'],
+    ]);
+    s.face(dirFromVector(g.x - s.x, g.y - s.y, 'up'));
+    await this.wait(500);
+    Audio8.noise(0.7, { freq: 140, sweep: 70, vol: 0.5, filter: 'lowpass' });
+    Audio8.tone(90, 0.6, { type: 'sawtooth', vol: 0.06, slide: 60 });
+    this.cameras.main.shake(300, 0.004);
+    await this.sayBubble(s, 'PRRRRRT', 1300);
+    await this.talk([
+      [null, 'La guardia non muove un muscolo. Neanche le narici.'],
+      ['Francesca', 'SIMONE!'],
+      ['Simone', 'Ok, ok, scusa! Scusi, signora guardia. Venga qua: abbraccio di pace.'],
+    ]);
+    const home = { x: s.x, y: s.y };
+    await this.tweenP({ targets: s, x: g.x + (s.x < g.x ? -7 : 7), y: g.y + 4, duration: 450, onUpdate: () => s.sync() });
+    Audio8.sfx('pop');
+    for (let i = 0; i < 4; i++) {
+      const h = this.add.image(g.x + (Math.random() - 0.5) * 14, g.y - 26, 'heart').setDepth(2000);
+      this.tweens.add({ targets: h, y: h.y - 18, alpha: 0, delay: i * 150, duration: 800, onComplete: () => h.destroy() });
+    }
+    await this.wait(900);
+    await this.tweenP({ targets: s, x: home.x, y: home.y, duration: 450, onUpdate: () => s.sync() });
+    await this.talk([
+      [null, 'La guardia non ricambia l\'abbraccio. Ma non lo respinge neanche.'],
+      ['Simone', 'Secondo me in fondo mi vuole bene.'],
+      ['Francesca', 'Andiamo via prima che chiamino il Re.'],
+    ]);
+    this.busy = false;
+  }
+
+  // Il Big Ben: i rintocchi di Westminster e il selfie numero trecentouno
+  async bigBenScene() {
+    this.busy = true;
+    const s = this.simone;
+    this.benTalks++;
+    const chime = (notes, gap = 0.42) => notes.forEach((n, i) => {
+      const fq = 440 * Math.pow(2, (n - 69) / 12);
+      Audio8.tone(fq, 0.9, { type: 'triangle', vol: 0.16, delay: i * gap });
+      Audio8.tone(fq * 2, 0.5, { type: 'sine', vol: 0.05, delay: i * gap });
+    });
+    if (this.benTalks === 1) {
+      Audio8.stopSong(0.4);
+      chime([64, 68, 66, 59, 64, 66, 68, 64]);
+      await this.wait(3700);
+      chime([52, 52], 1.1);
+      await this.wait(2400);
+      await this.talk([
+        ['Simone', 'Senti? Suona per noi.'],
+        ['Francesca', 'Suona ogni ora, Simone.'],
+        ['Simone', 'E ogni ora suona per noi.'],
+        ['Simone', 'Dai, selfie col Big Ben! Più vicina… sorridi!'],
+      ]);
+      s.face('down');
+      this.player.face('down');
+      await this.wait(300);
+      const flash = this.add.rectangle(0, 0, 480, 270, 0xffffff, 0.85).setOrigin(0, 0).setScrollFactor(0).setDepth(1100);
+      Audio8.noise(0.06, { freq: 4000, vol: 0.3 });
+      await this.tweenP({ targets: flash, fillAlpha: 0, duration: 250 });
+      flash.destroy();
+      await this.selfieCard();
+      await this.talk([[null, 'Simone ha trecento foto di scoiattoli. Ma come sfondo del telefono mette questa.']]);
+      Audio8.playSong(SONGS.london);
+    } else if (this.benTalks === 2) {
+      await this.talk([
+        ['Simone', 'Lo sapevi che Big Ben è il nome della campana, non della torre?'],
+        ['Francesca', 'Te l\'ha detto la turista cinque minuti fa.'],
+        ['Simone', 'Sì, ma io lo sapevo già da prima. Da cinque minuti e mezzo.'],
+      ]);
+    } else {
+      chime([68, 64, 66, 59]);
+      await this.wait(1200);
+      await this.say('Simone', 'Hai sentito? Ha suonato di nuovo per noi.');
+    }
+    this.busy = false;
+  }
+
+  // La foto: Francesca e Simone col Big Ben dietro, in una polaroid
+  async selfieCard() {
+    const c = this.add.container(240, 120).setScrollFactor(0).setDepth(1250);
+    const g = this.add.graphics();
+    g.fillStyle(0x2a1d1a).fillRect(-62, -78, 124, 150);
+    g.fillStyle(0xfbf3e4).fillRect(-61, -77, 122, 148);
+    g.fillStyle(0x6a7a9a).fillRect(-54, -70, 108, 104);
+    g.fillStyle(0x8a9ab8).fillRect(-54, -70, 108, 40);
+    c.add(g);
+    const ben = this.add.image(0, 34, 'bigBen').setOrigin(0.5, 1);
+    ben.setScale(Math.min(1, 100 / ben.height, 100 / ben.width));
+    c.add(ben);
+    const fr = this.add.sprite(-12, 34, 'francesca', 0).setOrigin(0.5, 1).setScale(2);
+    const si = this.add.sprite(14, 34, 'simone', 0).setOrigin(0.5, 1).setScale(2);
+    c.add([fr, si]);
+    const heart = this.add.image(40, -58, 'heart');
+    c.add(heart);
+    c.add(addText(this, 0, 44, 'Foto n. 301', { color: 0x6a3a2a, origin: [0.5, 0.5] }));
+    c.add(addText(this, 0, 58, 'la più bella', { color: 0xd0607e, origin: [0.5, 0.5] }));
+    c.setScale(0).setAngle(-4);
+    await this.tweenP({ targets: c, scale: 1, angle: 3, duration: 400, ease: 'Back.Out' });
+    await this.wait(400);
+    await this.waitA();
+    await this.tweenP({ targets: c, scale: 0, duration: 250 });
+    c.destroy();
+  }
+
+  // I piccioni volano via quando arrivi
+  scarePigeons() {
+    this.pigeonsGone = true;
+    this.pigeons.forEach((g, i) => {
+      this.tweens.killTweensOf(g);
+      g.setFrame(1).setDepth(1800);
+      const right = i % 2 === 0;
+      g.setFlipX(!right);
+      this.tweens.add({ targets: g, x: g.x + (right ? 220 : -220), y: g.y - 160 - i * 20, duration: 1600 + i * 200, delay: i * 120,
+        onUpdate: () => g.setFrame(Math.floor(this.time.now / 90) % 2), onComplete: () => g.destroy() });
+    });
+    Audio8.noise(0.4, { freq: 900, vol: 0.12 });
+    this.sayBubble(this.simone, 'aspettate! una foto!', 1800);
+  }
+
+  // Il sigaro Capitol: citazione di Metal Gear Solid… e niente da fare con questo vento
+  async cigarScene() {
+    this.busy = true;
+    const s = this.simone;
+    this.world.interact.delete('111,7');
+    this.world.blocked.delete('111,7');
+    this.cigar.destroy();
+    this.cigarSpark.destroy();
+    await this.talk([[null, 'Per terra, sotto la pioggia, c\'è un sigaro Capitol ancora incartato.']]);
+    await this.itemPopup('itemCigar', 'un sigaro Capitol');
+    // l'allarme di Metal Gear
+    const alert = this.add.image(s.x, s.y - 26, 'exclaim').setOrigin(0.5, 1).setDepth(2000).setScale(0);
+    Audio8.tone(1568, 0.07, { type: 'square', vol: 0.12 });
+    Audio8.tone(2093, 0.3, { type: 'square', vol: 0.12, delay: 0.07 });
+    Audio8.tone(1047, 0.3, { type: 'sawtooth', vol: 0.05, delay: 0.07 });
+    await this.tweenP({ targets: alert, scale: 1.6, duration: 120, ease: 'Back.Out' });
+    await this.wait(700);
+    alert.destroy();
+    s.face(dirFromVector(this.player.x - s.x, this.player.y - s.y, 'left'));
+    await this.talk([
+      ['Simone', '…Kept you waiting, huh?'],
+      ['Francesca', 'Eh?'],
+      ['Simone', 'Metal Gear Solid, Picci! Snake che si accende il sigaro sotto la pioggia. Momento leggendario.'],
+    ]);
+    // tre tentativi con l'accendino, mentre il vento gira
+    this.windy = true;
+    for (let i = 0; i < 3; i++) {
+      Audio8.noise(0.05, { freq: 5000, vol: 0.25 });
+      const sp = this.add.image(s.x + 5, s.y - 12, 'star').setDepth(2000).setScale(0.6);
+      this.tweens.add({ targets: sp, alpha: 0, y: sp.y - 4, duration: 200, onComplete: () => sp.destroy() });
+      Audio8.noise(0.6, { freq: 500, sweep: 1400, vol: 0.12 });
+      this.sayBubble(s, i < 2 ? 'click…' : 'click… click…', 650);
+      await this.wait(800);
+    }
+    await this.talk([
+      ['Simone', 'Con \'sto vento e \'sta pioggia non si accende…'],
+      ['Simone', 'Snake non ha mai avuto questi problemi.'],
+      [null, 'Il sigaro finisce nella tasca di Simone. Sarà per la prossima missione.'],
+    ]);
+    this.windy = false;
+    this.busy = false;
   }
 
   gainItem(id) {
@@ -1441,6 +1834,7 @@ class Level3Scene extends BaseScene {
   // Prima del caffè: Francesca si siede su un gradino, pronta ad arrendersi
   async giveUpScene() {
     this.stepDone = true;
+    this.openSceneGate(84);
     this.busy = true;
     const f = this.player;
     await Promise.all([this.autoWalk(f, 88, 7, 30), this.autoWalk(this.simone, 88, 9, 34)]);
@@ -1478,6 +1872,7 @@ class Level3Scene extends BaseScene {
   // Quasi arrivati: 39.997 passi, gli ultimi tre fino alla porta, il bacino e si entra
   async finalApproach() {
     this.finalDone = true;
+    this.openSceneGate(162);
     this.busy = true;
     await Promise.all([this.autoWalk(this.player, 168, 10, 30), this.autoWalk(this.simone, 167, 10, 30)]);
     this.mover.teleport(168, 10, 'up');

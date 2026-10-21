@@ -20,6 +20,9 @@ const SPEAKER_PORTRAITS = {
   Ragazzi: 'kidA', 'Il Sindaco': 'sindaco',
   Commessa: 'commessa', Barista: 'barista', Londinese: 'londoner',
   'Zia Dorota': 'ziaDorota', 'Zio Paul': 'zioPaul',
+  Paddington: 'paddington', 'Mr Bean': 'mrBean', Sherlock: 'sherlock', 'Mary Poppins': 'maryPoppins',
+  'Christian De Sica': 'deSica', 'Julia Roberts': 'julia', 'Hugh Grant': 'hughGrant', 'Harry Potter': 'harryPotter',
+  'David Beckham': 'beckham',
 };
 const PORTRAIT_BG = { simone: '#c8d6f0', francesca: '#f6c9d4' };
 const PORTRAIT = { w: 44, h: 44 };

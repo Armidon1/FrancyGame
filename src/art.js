@@ -225,4 +225,85 @@ const NPC_DEFS = {
   bridget: { tpl: 'girl', pal: { H: '#b07a44', h: '#d4a466', d: '#875a30', M: '#d9434f', m: '#a8303c', J: '#2a2a36', j: '#1e1e28', Y: '#f4f4f0' } },
   ziaDorota: { tpl: 'girl', pal: { H: '#2a1d1a', h: '#4a3028', d: '#1a1210', M: '#c06a8a', m: '#9a4a6a', J: '#4a4a5a', Y: '#f4f4f4' } },
   londoner: { tpl: 'boy', pal: { H: '#4a2e22', h: '#6e4832', X: '#1e1a1e', x: '#3a3a3a', C: '#3a3a4a', c: '#2a2a36', A: '#d9434f', a: '#9c2a3a' }, patch: PATCH.beanie },
+
+  // Celebrità sul marciapiede in basso (caricature affettuose)
+  paddington: {
+    tpl: 'boy',
+    // orsetto col cappello rosso e il montgomery blu
+    pal: { H: '#c8323a', h: '#e85a4a', S: '#a8703a', s: '#8a5a2a', R: '#a8703a', T: '#dcb482', L: '#2a1d1a',
+      C: '#3f6fbf', c: '#2c4f8f', A: '#3f6fbf', a: '#f2c14e', P: '#8a5a2a', O: '#6a4220' },
+    patch: {
+      down: {
+        0: '.....KKKKKK.....', 1: '....KHHHHHHK....', 2: '....KHhHHHHK....', 3: '....KHHHHHHK....',
+        4: '.KKKHHHHHHHHKKK.', 5: '.KHHHHHHHHHHHHK.', 6: '..KSSSSSSSSSSK..',
+        10: '...KSSTTTTSSK...', 11: '...KSTTLLTTSK...', 12: '....KSTTTTSK....',
+      },
+      up: {
+        0: '.....KKKKKK.....', 1: '....KHHHHHHK....', 2: '....KHhHHHHK....', 3: '....KHHHHHHK....',
+        4: '.KKKHHHHHHHHKKK.', 5: '.KHHHHHHHHHHHHK.', 6: '..KSSSSSSSSSSK..', 7: '..KSSSSSSSSSSK..',
+        8: '..KSSSSsSSSSSK..', 9: '..KsSSSSSSSSsK..', 10: '...KSSSSSSSSK...',
+      },
+      left: {
+        0: '.....KKKKKK.....', 1: '....KHHHHHHK....', 2: '....KHhHHHHK....', 3: '....KHHHHHHK....',
+        4: '.KKKHHHHHHHHKK..', 5: '.KHHHHHHHHHHHHK.', 6: '.KSSSSSSSSSSSK..', 7: '.KSSSSSSSSSSSK..',
+        8: '.KSESSSSSSSSK...', 9: '.KLTSSSSssSSK...', 10: '..KTTSSSSsSK....', 11: '..KTTSSSSSK.....',
+      },
+    },
+  },
+  // giacca di tweed, cravattino sottile, sopracciglia perennemente alzate
+  mrBean: {
+    tpl: 'boy',
+    pal: { H: '#4a3020', h: '#6a4630', C: '#7a5a3a', c: '#5e4428', A: '#f4f0e6', a: '#7a2a2a', P: '#4a4a52', O: '#1e1a18' },
+    patch: {
+      down: { 7: '..KSLLSSSSLLSK..', 11: '...KSSMMMMSSK...' },
+      left: { 7: '.KLLSSSSHHHHHK..' },
+    },
+  },
+  // cappello da cacciatore a quadri e cappotto lungo
+  sherlock: {
+    tpl: 'boy',
+    pal: { H: '#2a1d1a', h: '#3a2a26', X: '#9a7a52', x: '#6e5434', C: '#4a4a54', c: '#34343c', A: '#4a5a8a', a: '#34406e', P: '#34343c', O: '#1a1614' },
+    patch: PATCH.beanie,
+  },
+  // cappello nero col fiore e cappotto blu notte
+  maryPoppins: {
+    tpl: 'girl',
+    pal: { H: '#2a1d1a', h: '#4a3028', d: '#1a1210', X: '#1e1a1e', M: '#2c3a6a', m: '#1e2850', Y: '#d9434f', J: '#2c3a6a', j: '#1e2850', O: '#1a1614' },
+    patch: {
+      down: { 0: '.....KKKKKK.....', 1: '....KXXXXXXK....', 2: '....KXYXXXXK....', 3: 'KKKKXXXXXXXXKKKK', 4: 'KXXXXXXXXXXXXXXK' },
+      up: { 0: '.....KKKKKK.....', 1: '....KXXXXXXK....', 2: '....KXXXXYXK....', 3: 'KKKKXXXXXXXXKKKK', 4: 'KXXXXXXXXXXXXXXK' },
+      left: { 0: '.....KKKKKK.....', 1: '....KXXXXXXK....', 2: '....KXXXXXYK....', 3: 'KKKKXXXXXXXXKKK.', 4: 'KXXXXXXXXXXXXXK.' },
+    },
+  },
+  // capelli all'indietro lucidi, occhiali scuri, cappotto cammello: il re del cinepanettone
+  deSica: {
+    tpl: 'boy',
+    pal: { H: '#1a1414', h: '#4a4040', S: '#e8b088', s: '#c88e66', R: '#e09a7c', C: '#c89a5a', c: '#a07a40', A: '#f4f4f0', a: '#e8b088', P: '#2a2a32', O: '#1a1410', W: '#ffffff' },
+    patch: {
+      down: {
+        2: '...KHhhhhhhHK...', 3: '..KHHhhhhhhHHK..', 4: '..KHHHHHHHHHHK..', 5: '..KHSSSSSSSSHK..',
+        8: '..KSLLLLLLLLSK..', 11: '...KSMWWWWMSK...',
+      },
+      up: { 2: '...KHhhhhhhHK...', 3: '..KHHhhhhhhHHK..', 4: '..KHHhhhhhhHHK..' },
+      left: { 2: '...KHhhhhhhHK...', 3: '..KHHhhhhhhHHK..', 8: '.KLLLSSSSHHHK...' },
+    },
+  },
+  // capelli lunghi ramati e un sorriso enorme
+  julia: { tpl: 'girl', pal: { H: '#8a3a22', h: '#b0562e', d: '#6a2a18', M: '#2a2a36', m: '#1e1e28', Y: '#f2c14e', J: '#3a5a8a', j: '#2c4a74', r: '#c4505a' },
+    patch: { down: { 10: '.KHhHSrrrrSHhHK.' } } },
+  // occhiali tondi, cicatrice, cravatta rossa e oro
+  harryPotter: {
+    tpl: 'boy',
+    pal: { H: '#1e1a1a', h: '#3a3030', C: '#1e1a22', c: '#141018', A: '#c8323a', a: '#f2c14e', P: '#2a2a32', O: '#141010', Z: '#c8323a' },
+    patch: {
+      down: { 2: '...KHhHHhHHhK...', 3: '..KHhHHhHHHhHK..', 6: '..KHSSZSSSSSHK..', 8: '..KSLELSSLELSK..' },
+      left: { 8: '.KLELSSSSHHHK...' },
+    },
+  },
+  // maglia bianca dell'Inghilterra, ciuffo biondo
+  beckham: {
+    tpl: 'boy',
+    pal: { H: '#c8a050', h: '#e8c878', C: '#f4f4f4', c: '#d0d0d8', A: '#f4f4f4', a: '#2a3a6a', P: '#2a3a6a', O: '#1a1a1a' },
+    patch: { down: { 2: '...KHhhhhhHHK...', 3: '..KHHhhhhhHHHK..' } },
+  },
 };

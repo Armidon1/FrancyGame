@@ -24,6 +24,15 @@ const LONDON_OPPONENTS = Object.freeze(Object.fromEntries([
   ['guardia', 'guardia', 'La guardia reale', 55, [['Sguardo immobile', 10, 'Non sbatte le palpebre da tre ore.'], ['Colbacco pesante', 14, 'Un cappello che è praticamente un\'arma.']]],
   ['londonTurista', 'turistaB', 'Turista con la guida', 45, [['Fatto curioso', 11, 'Lo sapevi che… sì, lo sapevi.'], ['Foto col Big Ben', 12, 'Il flash era acceso. Di giorno.']]],
   ['londonSignora', 'nonna', 'La signora inglese', 48, [['Tè bollente', 13, 'Più bollente dell\'orgoglio britannico.'], ['Oh dear!', 10, 'Un sospiro così educato da fare male.']]],
+  ['paddington', 'paddington', 'Paddington', 44, [['Sguardo intenso', 10, 'Uno sguardo così severo che ti senti in colpa.'], ['Panino alla marmellata', 12, 'Ne teneva uno sotto il cappello. Per le emergenze.']]],
+  ['mrBean', 'mrBean', 'Mr Bean', 46, [['Smorfia', 10, 'Una faccia che non si può descrivere a parole.'], ['Teddy volante', 13, 'Lancia l\'orsacchiotto. Poi lo rivuole indietro.']]],
+  ['sherlock', 'sherlock', 'Sherlock Holmes', 52, [['Deduzione', 11, 'Elementare. Hai perso prima ancora di iniziare.'], ['Assolo di violino', 14, 'Alle tre di notte. Sotto casa tua.']]],
+  ['maryPoppins', 'maryPoppins', 'Mary Poppins', 50, [['Zolletta di zucchero', 10, 'Un poco di zucchero… e la mossa va giù.'], ['Ombrello volante', 14, 'Atterra con una grazia insopportabile.']]],
+  ['deSica', 'deSica', 'Christian De Sica', 56, [['Battuta da cinepanettone', 11, 'Ride da solo. Poi ride tutto il cinema.'], ['Ma che sei matta?!', 15, 'Detto con la erre più romana di Londra.']]],
+  ['julia', 'julia', 'Julia Roberts', 50, [['Sorriso da Oscar', 11, 'Abbagliante. Letteralmente.'], ['Pretty Woman', 14, 'Anche lei ha il suo Pretty Priviledge.']]],
+  ['hughGrant', 'hughGrant', 'Hugh Grant', 48, [['Balbettio adorabile', 10, 'Si scusa tre volte prima di colpire.'], ['Ciuffo anni \'90', 13, 'Un colpo di capelli perfetto.']]],
+  ['harryPotter', 'harryPotter', 'Harry Potter', 48, [['Expelliarmus!', 11, 'Ti vola via il telefono.'], ['Gufo postino', 13, 'Ti consegna una lettera. In faccia.']]],
+  ['beckham', 'beckham', 'David Beckham', 54, [['Tiro a giro', 12, 'Curva come una banana. Gol.'], ['Punizione all\'incrocio', 15, 'Il portiere non si è nemmeno mosso.']]],
 ].map(([key, sprite, name, hp, moves]) => [key, Object.freeze({ key, sprite, name, hp, moves: Object.freeze(moves.map(([name, damage, text]) => Object.freeze({ name, damage, text, effect: null }))) })])));
 
 function battleOpponent(key) {

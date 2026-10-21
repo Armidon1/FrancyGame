@@ -92,9 +92,9 @@ for (const [key, profile] of Object.entries(profiles)) {
   assert.equal(w.outcome, 'victory', key);
  }
 }
-// Londra: 4 profili con sprite esistenti, combattibili da entrambi.
+// Londra: cittadini e celebrità, con sprite esistenti, combattibili da entrambi.
 {
- assert.equal(Object.keys(london).join(), 'londoner,guardia,londonTurista,londonSignora');
+ assert.equal(Object.keys(london).join(), 'londoner,guardia,londonTurista,londonSignora,paddington,mrBean,sherlock,maryPoppins,deSica,julia,hughGrant,harryPotter,beckham');
  for (const [key, profile] of Object.entries(london)) {
   assert(profile.sprite); assert(profile.hp >= 42 && profile.hp <= 58);
   assert(profile.moves.every(m => !m.effect && m.damage >= 10 && m.damage <= 16));
