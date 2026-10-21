@@ -254,15 +254,16 @@ class Level2Scene extends BaseScene {
     let bubbleState = 0;
     this.bubbleTimer = this.time.addEvent({
       delay: 2400, loop: true, callback: () => {
-        bubbleState = 1 - bubbleState;
+        bubbleState = (bubbleState + 1) % 4;
         this.simoneBubble.destroy();
-        this.simoneBubble = Art.bubble(this, bubbleState ? 'tutto ok, tutto ok!' : 'aiuto…');
+        this.simoneBubble = Art.bubble(this, ['aiuto…', 'tutto ok, tutto ok!', 'aiuto…', '♪ amore disperatooo ♪'][bubbleState]);
         this.simoneBubble.setPosition(RINK.simone.x, RINK.simone.y - 24);
       },
     });
 
     // Francesca
     this.player = new Character(this, 'francesca', RINK.start.x, RINK.start.y, 'up');
+    this.humSongs = [[[this.player, '♪ amore disperato… ♪']], [[this.player, '♪ na na na naa! ♪']]];
     this.vx = 0;
     this.vy = 0;
     this.checkpoint = { ...RINK.start };
@@ -408,6 +409,7 @@ class Level2Scene extends BaseScene {
     const dt = delta / 1000;
     for (const s of this.skaters) s.place(dt);
     if (this.stars) this.updateStars(time);
+    this.humTick(time, this.humSongs, !this.falling);
 
     if (this.busy || this.leaving || this.dialog.active || this.falling) {
       this.slide(dt, { x: 0, y: 0 }, this.falling ? 2.5 : 4);

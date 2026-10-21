@@ -1,4 +1,6 @@
-// Suoni e musichette chiptune generati con Web Audio. Partono solo dopo il primo tocco.
+// Suoni e musichette generati con Web Audio. Partono solo dopo il primo tocco.
+// Le musiche usano un motore "16 bit" (stile Super Nintendo): strumenti con inviluppo morbido,
+// due oscillatori un po' scordati, filtro, vibrato sulle note lunghe, eco e accordi ("C4+E4+G4").
 
 const NOTE_FREQ = (() => {
   const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -18,8 +20,23 @@ const Audio8 = {
   songTimer: null,
   noiseBuf: null,
 
+  useFiles: true,
+
   init() {
     try { this.muted = localStorage.getItem('picci_muted') === '1'; } catch (_) { /* ok */ }
+    try { this.useFiles = localStorage.getItem('picci_music') !== 'chip'; } catch (_) { /* ok */ }
+  },
+
+  // Ci sono le nostre canzoni (local/songs.js)? Allora si può scegliere tra quelle e le musichette del gioco
+  hasFiles() {
+    return Object.values(SONGS).some(s => s.file);
+  },
+
+  setUseFiles(on) {
+    this.useFiles = on;
+    try { localStorage.setItem('picci_music', on ? 'files' : 'chip'); } catch (_) { /* ok */ }
+    const cur = this.song;
+    if (cur) { this.stopSong(); this.playSong(cur); }
   },
 
   unlock() {
@@ -33,6 +50,15 @@ const Audio8 = {
       this.musicGain = this.ctx.createGain();
       this.musicGain.gain.value = 0.55;
       this.musicGain.connect(this.master);
+      // eco: ritardo con ritorno e filtro, come il riverbero delle cartucce SNES
+      const delay = this.ctx.createDelay(1);
+      delay.delayTime.value = 0.22;
+      const fb = this.ctx.createGain(); fb.gain.value = 0.18;
+      const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800;
+      const wet = this.ctx.createGain(); wet.gain.value = 0.18;
+      this.echoSend = this.ctx.createGain();
+      this.musicGain.connect(this.echoSend); this.echoSend.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay);
+      lp.connect(wet); wet.connect(this.master);
       const len = this.ctx.sampleRate * 0.5;
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.noiseBuf.getChannelData(0);
@@ -128,19 +154,73 @@ const Audio8 = {
   // --- Musica -----------------------------------------------------------
   // Un brano: { bpm, steps per battuta implicito, tracks: [{ type, vol, notes: 'C5 . E5 - ...' }] }
   // Ogni token è un sedicesimo: nota, '.' pausa, '-' prolunga la nota precedente.
+  // Strumenti del motore 16 bit: forme d'onda, scordatura, filtro, inviluppo (attacco, decadimento, sostegno, rilascio)
+  INSTRUMENTS: {
+    lead:  { waves: ['sawtooth', 'square'], detune: 5, cut: 3200, a: 0.01, d: 0.18, s: 0.7, r: 0.06, vib: 5, gain: 0.55 },
+    soft:  { waves: ['triangle', 'sine'], detune: 4, cut: 3000, a: 0.01, d: 0.2, s: 0.7, r: 0.12, vib: 4, gain: 1 },
+    piano: { waves: ['triangle', 'square'], detune: 3, cut: 2200, a: 0.004, d: 0.5, s: 0.2, r: 0.2, vib: 0, gain: 0.8 },
+    pad:   { waves: ['sawtooth', 'sawtooth'], detune: 12, cut: 1100, a: 0.08, d: 0.3, s: 0.8, r: 0.3, vib: 0, gain: 0.5 },
+    bass:  { waves: ['triangle', 'square'], detune: 0, cut: 600, a: 0.006, d: 0.2, s: 0.5, r: 0.05, vib: 0, gain: 1 },
+    bell:  { waves: ['sine', 'sine'], ratio: 2.01, cut: 5000, a: 0.003, d: 0.6, s: 0.15, r: 0.3, vib: 0, gain: 1 },
+  },
+  LEGACY: { square: 'lead', triangle: 'soft', sine: 'bell', sawtooth: 'pad' },
+
+  voice(freq, dur, inst, vol, at) {
+    const I = this.INSTRUMENTS[inst] || this.INSTRUMENTS.soft;
+    const c = this.ctx;
+    const v = vol * I.gain;
+    const end = at + dur;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(v, at + I.a);
+    g.gain.setTargetAtTime(v * I.s, at + I.a, I.d / 3);
+    g.gain.setTargetAtTime(0, end, I.r / 3);
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = Math.min(I.cut, freq * 8);
+    f.connect(g);
+    g.connect(this.musicGain);
+    const oscs = I.waves.map((w, i) => {
+      const o = c.createOscillator();
+      o.type = w;
+      o.frequency.value = freq * (i && I.ratio ? I.ratio : 1);
+      o.detune.value = i ? I.detune || 0 : -(I.detune || 0);
+      const og = c.createGain();
+      og.gain.value = i ? (I.ratio ? 0.25 : 0.5) : 1;
+      o.connect(og); og.connect(f);
+      o.start(at); o.stop(end + I.r * 2);
+      return o;
+    });
+    // vibrato solo sulle note lunghe, entra piano piano
+    if (I.vib && dur > 0.35) {
+      const lfo = c.createOscillator();
+      lfo.frequency.value = 5.5;
+      const depth = c.createGain();
+      depth.gain.setValueAtTime(0, at);
+      depth.gain.linearRampToValueAtTime(0, at + 0.2);
+      depth.gain.linearRampToValueAtTime(I.vib, at + 0.5);
+      lfo.connect(depth);
+      oscs.forEach(o => depth.connect(o.detune));
+      lfo.start(at); lfo.stop(end + I.r * 2);
+    }
+  },
+
   playSong(song) {
     if (this.song === song) return;
     this.stopSong();
     if (!song) return;
     if (!this.ctx) { this.pendingSong = song; return; }
     this.song = song;
-    const tracks = song.tracks.map(t => ({ ...t, tokens: t.notes.trim().split(/\s+/) }));
+    const file = song.file && this.useFiles;
+    this.echoSend.gain.value = file ? 0 : 1; // le basi vere non vogliono l'eco
+    if (file) { this.playFile(song); return; }
+    const tracks = song.tracks.map(t => ({ ...t, inst: t.inst || this.LEGACY[t.type] || 'soft', tokens: t.notes.trim().split(/\s+/) }));
     const len = Math.max(...tracks.map(t => t.tokens.length));
     const stepDur = 60 / song.bpm / 4;
     let step = 0;
     let nextTime = this.ctx.currentTime + 0.1;
     this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
-    this.musicGain.gain.setValueAtTime(0.55, this.ctx.currentTime);
+    this.musicGain.gain.setValueAtTime(0.55 * (song.gain || 1), this.ctx.currentTime);
     const tick = () => {
       while (nextTime < this.ctx.currentTime + 0.25) {
         for (const tr of tracks) {
@@ -148,8 +228,10 @@ const Audio8 = {
           if (tok && tok !== '.' && tok !== '-') {
             let n = 1;
             while (tr.tokens[(step + n) % tr.tokens.length] === '-' && n < 32) n++;
-            const f = NOTE_FREQ[tok];
-            if (f) this.tone(f, n * stepDur * 0.92, { type: tr.type, vol: tr.vol, at: nextTime, dest: this.musicGain });
+            for (const name of tok.split('+')) {
+              const f = NOTE_FREQ[name];
+              if (f) this.voice(f, n * stepDur * 0.92, tr.inst, tr.vol, nextTime);
+            }
           }
         }
         nextTime += stepDur;
@@ -160,7 +242,32 @@ const Audio8 = {
     this.songTimer = setInterval(tick, 50);
   },
 
+  // Base audio vera (musiche private in local/): caricata una volta, suonata in loop sul canale musica
+  playFile(song) {
+    const start = (buf) => {
+      if (this.song !== song) return;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      src.connect(this.musicGain);
+      src.start();
+      this.fileSrc = src;
+    };
+    this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.musicGain.gain.setValueAtTime(0.55 * (song.gain || 1), this.ctx.currentTime);
+    if (song.buf) { start(song.buf); return; }
+    fetch(song.file).then(r => r.arrayBuffer())
+      .then(data => new Promise((ok, ko) => this.ctx.decodeAudioData(data, ok, ko)))
+      .then((buf) => { song.buf = buf; start(buf); })
+      .catch(() => { /* file mancante: niente musica */ });
+  },
+
   stopSong(fade) {
+    if (this.fileSrc) {
+      const src = this.fileSrc;
+      this.fileSrc = null;
+      try { src.stop(this.ctx.currentTime + (fade || 0)); } catch (_) { /* già fermo */ }
+    }
     if (this.songTimer) clearInterval(this.songTimer);
     this.songTimer = null;
     this.song = null;
@@ -185,32 +292,34 @@ const SONGS = {
         'F3 . C4 . F4 . C4 . C4 . G4 . C5 . G4 . F3 . C4 . A4 . C4 . G3 . D4 . B4 . D4 . ' },
     ],
   },
+  // Livello 2: new wave anni '80 col basso che corre (atmosfera alla "Amore disperato", melodia originale)
   ice: {
-    bpm: 138,
+    bpm: 140,
     tracks: [
       { type: 'square', vol: 0.045, notes:
-        'C5 . E5 . G5 . E5 . A5 - G5 . E5 . C5 . D5 . F5 . A5 . F5 . G5 - - - . . . . ' +
-        'E5 . G5 . C6 . G5 . A5 - G5 . F5 . E5 . D5 . E5 . F5 . D5 . C5 - - - . . . . ' },
+        'B4 . B4 . E5 - D5 . E5 - - . G5 . F#5 . E5 - - - C5 - - . . . E5 . G5 . E5 . D5 . D5 . G5 - F#5 . G5 - - . B5 . A5 . F#5 - - - D5 - - . A4 . . . . . . . ' +
+        'C5 . C5 . E5 - D5 . C5 - - . A4 . C5 . E5 - - - G5 - - . E5 . D5 . C5 . D5 . F#5 - - . A5 - - . F#5 . E5 . D5 . F#5 . D#5 - - - - - - - B4 . . . . . . . ' },
       { type: 'triangle', vol: 0.2, notes:
-        'C3 . . . G3 . . . A3 . . . E3 . . . D3 . . . A3 . . . G3 . . . G3 . B3 . ' +
-        'C3 . . . G3 . . . F3 . . . C3 . . . G3 . . . G3 . . . C3 . . . G3 . E3 . ' },
-      { type: 'sine', vol: 0.06, notes:
-        '. . C6 . . . C6 . . . E6 . . . E6 . . . F6 . . . F6 . . . D6 . . . D6 . ' +
-        '. . C6 . . . C6 . . . A5 . . . A5 . . . B5 . . . B5 . . . C6 . . . . . ' },
+        'E2 . E3 . E2 . E3 . E2 . E3 . E2 . E3 . C3 . C4 . C3 . C4 . C3 . C4 . C3 . C4 . G2 . G3 . G2 . G3 . G2 . G3 . G2 . G3 . D3 . D4 . D3 . D4 . D3 . D4 . D3 . D4 . ' +
+        'A2 . A3 . A2 . A3 . A2 . A3 . A2 . A3 . C3 . C4 . C3 . C4 . C3 . C4 . C3 . C4 . D3 . D4 . D3 . D4 . D3 . D4 . D3 . D4 . B2 . B3 . B2 . B3 . B2 . B3 . B2 . B3 . ' },
+      { type: 'sine', vol: 0.05, notes:
+        '. . G5 . . . G5 . . . G5 . . . G5 . . . E5 . . . E5 . . . E5 . . . E5 . . . B5 . . . B5 . . . B5 . . . B5 . . . A5 . . . A5 . . . A5 . . . A5 . ' +
+        '. . C6 . . . C6 . . . C6 . . . C6 . . . G5 . . . G5 . . . G5 . . . G5 . . . F#5 . . . F#5 . . . F#5 . . . F#5 . . . D#5 . . . D#5 . . . D#5 . . . D#5 . ' },
     ],
   },
+  // Livello 1: lenta e malinconica, al tramonto (atmosfera alla "Cosa sarà", melodia originale)
   gianicolo: {
-    bpm: 100,
+    bpm: 84,
     tracks: [
       { type: 'triangle', vol: 0.17, notes:
-        'F5 - - - A5 - C6 - - - A5 - G5 - - - - - E5 - - - - - F5 - - - A5 - C6 - - - D6 - C6 - - - - - - - - - - - ' +
-        'A#5 - - - D6 - F6 - - - D6 - C6 - - - A5 - F5 - - - G5 - A5 - - - G5 - E5 - - - D5 - F5 - - - - - - - - - - - ' },
+        'E5 - - - C5 - D5 - E5 - - - A4 - - - F5 - - - E5 - D5 - C5 - - - - - - - G5 - - - E5 - C5 - D5 - E5 - G5 - - - D5 - - - - - B4 - D5 - - - - - - - ' +
+        'E5 - - - A5 - G5 - E5 - - - C5 - - - F5 - - - A5 - C6 - B5 - A5 - F5 - - - D5 - F5 - A5 - - - G#5 - - - B5 - - - A5 - - - - - - - - - - - - - - - ' },
       { type: 'square', vol: 0.03, notes:
-        'A4 . C5 . F5 . C5 . A4 . C5 . G4 . C5 . E5 . C5 . G4 . C5 . A4 . C5 . F5 . C5 . A4 . C5 . A4 . C5 . F5 . C5 . A4 . C5 . ' +
-        'A#4 . D5 . F5 . D5 . A#4 . D5 . A4 . C5 . F5 . C5 . A4 . C5 . G4 . C5 . E5 . C5 . G4 . C5 . A4 . C5 . F5 . C5 . A4 . . . ' },
-      { type: 'triangle', vol: 0.16, notes:
-        'F3 . . . . . C4 . . . . . C3 . . . . . G3 . . . . . F3 . . . . . C4 . . . . . F3 . . . . . A3 . . . . . ' +
-        'A#2 . . . . . F3 . . . . . F3 . . . . . C4 . . . . . C3 . . . . . G3 . . . . . F3 . . . . . C4 . . . . . ' },
+        'A3 . E4 . A4 . C5 . A4 . E4 . C4 . E4 . F3 . C4 . F4 . A4 . F4 . C4 . A3 . C4 . C4 . G4 . C5 . E5 . C5 . G4 . E4 . G4 . G3 . D4 . G4 . B4 . G4 . D4 . B3 . D4 . ' +
+        'A3 . E4 . A4 . C5 . A4 . E4 . C4 . E4 . F3 . C4 . F4 . A4 . F4 . C4 . A3 . C4 . D4 . F4 . A4 . F4 . E4 . G#4 . B4 . G#4 . A3 . E4 . A4 . C5 . A4 . . . . . . . ' },
+      { type: 'triangle', vol: 0.15, notes:
+        'A2 - - - - - - - E3 - - - - - - - F2 - - - - - - - C3 - - - - - - - C3 - - - - - - - G3 - - - - - - - G2 - - - - - - - D3 - - - - - - - ' +
+        'A2 - - - - - - - E3 - - - - - - - F2 - - - - - - - C3 - - - - - - - D3 - - - - - - - E3 - - - - - - - A2 - - - - - - - A2 - - - - - - - ' },
     ],
   },
   ninja: {
@@ -224,18 +333,19 @@ const SONGS = {
         'E3 . E3 . E3 . E3 . E3 . E3 . D3 . D3 . C3 . C3 . D3 . D3 . E3 . E3 . E3 . . . ' },
     ],
   },
+  // Livello 3: leggera e ariosa, da passeggiata infinita (atmosfera alla "Mr. Sky", melodia originale)
   london: {
-    bpm: 118,
+    bpm: 112,
     tracks: [
       { type: 'square', vol: 0.04, notes:
-        'G4 . B4 . D5 . G5 - F#5 . E5 . D5 - - - E5 . C5 . E5 . G5 - F#5 . D5 . A4 - - - ' +
-        'G4 . B4 . D5 . G5 - A5 . G5 . F#5 . E5 . D5 . E5 . F#5 . A5 . G5 - - - . . . . ' },
+        'C5 . F5 . A5 - G5 . F5 . . . C5 . D5 . F5 - - - E5 . D5 . A4 - - - . . . . D5 . F5 . A#5 - A5 . G5 . . . F5 . G5 . A5 - - - G5 . E5 . C5 - - - . . . . ' +
+        'C5 . F5 . A5 - C6 . A5 . . . F5 . A5 . C6 - - - B5 . A5 . E5 - - - . . . . D6 - C6 . A#5 . A5 . G5 - - . E5 . G5 . F5 - - - - - - - . . . . . . . . ' },
       { type: 'triangle', vol: 0.18, notes:
-        'G2 . . . D3 . . . G2 . . . D3 . . . C3 . . . G3 . . . D3 . . . A2 . . . ' +
-        'G2 . . . D3 . . . E3 . . . B2 . . . C3 . . . D3 . . . G2 . . . D3 . . . ' },
+        'F2 . . . C3 . . . F2 . . . C3 . . . D3 . . . A3 . . . D3 . . . A3 . . . A#2 . . . F3 . . . A#2 . . . F3 . . . C3 . . . G3 . . . C3 . . . G3 . . . ' +
+        'F2 . . . C3 . . . F2 . . . C3 . . . A2 . . . E3 . . . A2 . . . E3 . . . A#2 . . . F3 . . . C3 . . . G3 . . . F2 . . . C3 . . . F2 . . . C3 . . . ' },
       { type: 'sine', vol: 0.05, notes:
-        '. . . . B5 . . . . . . . B5 . . . . . . . C6 . . . . . . . A5 . . . ' +
-        '. . . . B5 . . . . . . . E6 . . . . . . . C6 . . . . . . . B5 . . . ' },
+        '. . . . A5 . . . . . . . A5 . . . . . . . F5 . . . . . . . F5 . . . . . . . D6 . . . . . . . D6 . . . . . . . E5 . . . . . . . E5 . . . ' +
+        '. . . . A5 . . . . . . . A5 . . . . . . . C6 . . . . . . . C6 . . . . . . . D6 . . . . . . . E6 . . . . . . . A5 . . . . . . . C6 . . . ' },
     ],
   },
   lullaby: {

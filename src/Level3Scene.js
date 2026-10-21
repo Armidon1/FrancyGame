@@ -915,6 +915,13 @@ class Level3Scene extends BaseScene {
     this.mover.onBump = (c, r) => this.onBump(c, r);
     this.simone = new Character(this, 'simone', 0, 0, 'right');
     this.mover.attachFollower(this.simone, 1, 8);
+    const s = this.simone;
+    this.humSongs = [
+      [[fr, '♪ Mr. Sky… ♪'], [s, '♪ …na na naa! ♪']],
+      [[s, '♪ Mr. Skyyy… ♪'], [fr, 'stonato ♥']],
+      [[fr, '♪ la la la… ♪'], [s, '♪ (fischietta) ♪']],
+      [[s, '♪ Mr. Sky… ♪'], [fr, '♪ …Mr. Sky! ♪']],
+    ];
 
     this.stage = 0;          // 0: verso Harrods, 1: verso il bar, 2: verso gli zii, 3: fatto
     this.items = [];
@@ -1164,14 +1171,13 @@ class Level3Scene extends BaseScene {
     this.celebs = [
       [celeb('paddington', 8, 'down', [
         ['Paddington', 'Buongiorno! Gradisce un panino alla marmellata? Ne tengo sempre uno sotto il cappello, per le emergenze.'],
-        ['Simone', 'Picci, guarda! Un orsacchiotto col cappotto!'],
-        ['Paddington', 'Mi permetta: anche lei ne ha uno accanto. Lo tratti bene, è una specie rara.'],
-        ['Simone', '…Ha ragione l\'orso.'],
+        ['Simone', 'Picci, guarda! Paddington! Quello vero!'],
+        ['Paddington', 'Un consiglio, signorina: a Londra si cammina tanto. Mai uscire senza un panino.'],
+        ['Simone', 'Picci, segnatelo. Vale più di una cartina.'],
       ]), 'paddington'],
       [celeb('mrBean', 30, 'down', [
         [null, 'Mr Bean non dice una parola. Ti mostra il suo orsacchiotto, Teddy.'],
-        [null, 'Poi guarda Simone. Poi guarda te. Ti fa l\'occhiolino.'],
-        [null, 'Il messaggio è chiaro: anche tu hai il tuo Teddy.'],
+        [null, 'Poi guarda Simone dall\'alto in basso e nasconde Teddy dietro la schiena.'],
         ['Simone', 'Perché mi fissa così?'],
       ]), 'mrBean'],
       [celeb('sherlock', 57, 'down', [
@@ -1460,6 +1466,7 @@ class Level3Scene extends BaseScene {
     if (this.battle) this.battle.update();
     const free = !this.locked;
     this.mover.update(time, free);
+    this.humTick(time, this.humSongs, !this.inside && !this.hitting);
 
     // fumetti che seguono i personaggi
     this.bubbles = this.bubbles.filter((e) => {
@@ -1588,20 +1595,12 @@ class Level3Scene extends BaseScene {
     await this.talk([
       [null, 'La guardia non muove un muscolo. Neanche le narici.'],
       ['Francesca', 'SIMONE!'],
-      ['Simone', 'Ok, ok, scusa! Scusi, signora guardia. Venga qua: abbraccio di pace.'],
+      ['Simone', 'Eh eh eh...'],
     ]);
-    const home = { x: s.x, y: s.y };
-    await this.tweenP({ targets: s, x: g.x + (s.x < g.x ? -7 : 7), y: g.y + 4, duration: 450, onUpdate: () => s.sync() });
-    Audio8.sfx('pop');
-    for (let i = 0; i < 4; i++) {
-      const h = this.add.image(g.x + (Math.random() - 0.5) * 14, g.y - 26, 'heart').setDepth(2000);
-      this.tweens.add({ targets: h, y: h.y - 18, alpha: 0, delay: i * 150, duration: 800, onComplete: () => h.destroy() });
-    }
-    await this.wait(900);
-    await this.tweenP({ targets: s, x: home.x, y: home.y, duration: 450, onUpdate: () => s.sync() });
+    await this.wait(400);
     await this.talk([
-      [null, 'La guardia non ricambia l\'abbraccio. Ma non lo respinge neanche.'],
-      ['Simone', 'Secondo me in fondo mi vuole bene.'],
+      [null, 'La guardia resta immobile. Ma il colbacco, forse, si è leggermente afflosciato.'],
+      ['Simone', 'Visto? Un piccolo cedimento. Ci siamo quasi.'],
       ['Francesca', 'Andiamo via prima che chiamino il Re.'],
     ]);
     this.busy = false;
@@ -1626,7 +1625,6 @@ class Level3Scene extends BaseScene {
       await this.talk([
         ['Simone', 'Senti? Suona per noi.'],
         ['Francesca', 'Suona ogni ora, Simone.'],
-        ['Simone', 'E ogni ora suona per noi.'],
         ['Simone', 'Dai, selfie col Big Ben! Più vicina… sorridi!'],
       ]);
       s.face('down');
@@ -1643,7 +1641,8 @@ class Level3Scene extends BaseScene {
       await this.talk([
         ['Simone', 'Lo sapevi che Big Ben è il nome della campana, non della torre?'],
         ['Francesca', 'Te l\'ha detto la turista cinque minuti fa.'],
-        ['Simone', 'Sì, ma io lo sapevo già da prima. Da cinque minuti e mezzo.'],
+        ['Simone', 'Sì, ma io lo sapevo già da prima'],
+        [null, 'Sta mentendo di nuovo.'],
       ]);
     } else {
       chime([68, 64, 66, 59]);

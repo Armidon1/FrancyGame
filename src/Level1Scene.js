@@ -472,6 +472,7 @@ class Level1Scene extends BaseScene {
     this.mover = new GridMover(this, this.world, fr, 14, 59);
     this.mover.onStep = (c, r) => this.onStep(c, r);
     this.player = fr;
+    this.humSongs = [[[fr, '♪ Cosa sarà… ♪']], [[fr, '♪ mm mm mmm… ♪']], [[fr, '♪ cosa sarààà… ♪']]];
 
     this.addNPCs();
     this.enableChallenges();
@@ -642,6 +643,7 @@ class Level1Scene extends BaseScene {
     const free = !this.locked;
     this.mover.update(time, free);
     if (this.mini) this.updateMini(time);
+    this.humTick(time, this.humSongs, !this.mini);
 
     // il "!" quando guarda qualcosa di interagibile
     const f = this.mover.facing();

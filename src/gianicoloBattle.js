@@ -253,7 +253,7 @@ class GianicoloBattle {
   // Il chiamante esegue npcMenuTick PRIMA di battle.update: un solo proprietario dell'input.
   update() {}
 
-  static async choose(scene, title, options) {
+  static async choose(scene, title, options, place = null) {
     if (!options.length) return -1;
     if (scene.npcMenuTick) throw new Error('Un menu NPC è già aperto');
     const items = options.map(o => typeof o === 'string' ? { name: o, description: '' } : { name: o.name || o.label || '', description: o.description || '' });
@@ -305,7 +305,9 @@ class GianicoloBattle {
       // Dal lato con più spazio, abbastanza lontano da non coprire un NPC accanto a lei.
       let bx = px < 240 ? px + 40 : px - 40 - w;
       bx = Math.round(Math.max(6, Math.min(474 - w, bx)));
-      const by = Math.round(Math.max(6, Math.min(200 - h, py - 11 - h / 2)));
+      let by = Math.round(Math.max(6, Math.min(200 - h, py - 11 - h / 2)));
+      // Posizione esplicita (es. il menu della schermata iniziale): centro del riquadro
+      if (place) { bx = Math.round(place.x - w / 2); by = Math.round(place.y - h / 2); }
       root.add(scene.add.rectangle(bx, by, w, h, 0x1a1020, 0.86).setOrigin(0, 0).setStrokeStyle(1, 0xe8d9b8));
       root.add(scene.add.rectangle(bx + 2, by + 2, w - 4, h - 4).setOrigin(0, 0).setStrokeStyle(1, 0xe8d9b8, 0.25));
       text(bx + w / 2, by + 4, title, { color: 0xc9b48a, origin: [0.5, 0] });

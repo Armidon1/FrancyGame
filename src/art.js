@@ -143,24 +143,25 @@ const NPC_DEFS = {
   fanD: { tpl: 'boy', pal: { H: '#2a1d1a', h: '#3a2a26', A: '#f2c14e', a: '#c08a2e', C: '#3f7fbf', c: '#2c5f96', X: '#f2c14e', x: '#ffffff' }, patch: PATCH.beanie },
 
   // Gianicolo
+  // Caricatura alla Verdone: capelli scuri con la fronte alta, sopracciglia folte e perplesse, nasone
   sindaco: {
     tpl: 'boy',
-    pal: { H: '#9a9a9a', h: '#c4c4c4', C: '#3a3a4a', c: '#2a2a36', A: '#f4f0e8', a: '#d9434f', V: '#3a9a4a', W: '#f6f6f6', Q: '#d9434f', P: '#2a2a36', O: '#1e1a18' },
+    pal: { H: '#3a2a22', h: '#5a4232', L: '#24180f', C: '#4a4a5a', c: '#34343f', A: '#f4f0e8', a: '#d9434f', V: '#3a9a4a', W: '#f6f6f6', Q: '#d9434f', P: '#2a2a36', O: '#1e1a18' },
     patch: {
       down: {
-        1: '....KKSSSSKK....', 2: '...KHSSSSSSHK...', 3: '..KHHSSSSSSHHK..',
-        11: '...KSHHHHHHSK...',
+        2: '...KHhHHHHhHK...', 3: '..KHHHHHHHHHHK..', 4: '..KHHSSSSSSHHK..', 5: '..KHSSLSSLSSHK..',
+        6: '..KSLLSSSSLLSK..', 7: '..KSSESSSSESSK..', 8: '..KsSSSssSSSsK..', 9: '..KSSSSssSSSSK..',
+        10: '...KSSssssSSK...', 11: '...KSSMMMMSSK...',
         13: '...KCVWQAACCK...', 14: '..KCCCVWQACCCK..', 15: '..KCCCCVWQCCCK..',
         16: '.KCCCCCCVWQCCCK.', 17: '.KSCCCCCCVWQCSK.', 18: '..KCCCCCCCVWQK..',
       },
       up: {
-        1: '....KKSSSSKK....', 2: '...KHSSSSSSHK...',
         13: '...KCCAAQWVCK...', 14: '..KCCCAQWVCCCK..', 15: '..KCCCQWVCCCCK..',
         16: '.KCCCQWVCCCCCCK.', 17: '.KSCQWVCCCCCCSK.', 18: '..KQWVCCCCCCCK..',
       },
       left: {
-        1: '....KKSSSSKK....', 2: '...KSSSSSSHHK...',
-        11: '..KHHSSSSSK.....',
+        4: '..KSSHHHHHHhHK..', 5: '.KSSSSHHHHHHHK..', 6: '.KLLSSSSHHHHHK..', 7: '.KSESSSSSHHHHK..',
+        8: 'KSSSSSSSSHHHK...', 9: 'KsSSSSSSssHHK...', 10: '.KKSSSSSSsHK....', 11: '..KMMSSSSSK.....',
         13: '...KAACVWQK.....', 14: '..KCAACVWQCK....', 15: '..KCCCVWQCCK....',
         16: '..KCCVWQCCCK....', 17: '..KCVWQCCCCK....', 18: '..KVWQCcCCCK....',
       },

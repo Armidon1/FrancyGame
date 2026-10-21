@@ -63,6 +63,7 @@ class TitleScene extends BaseScene {
   }
 
   tick() {
+    if (this.npcMenuTick) this.npcMenuTick();
     if (this.started || this.locked || this.pending) return;
     if (!Controls.consumeA()) return;
     // Se il tocco è sul titolo, decide il rilascio (pressione lunga = selettore livelli)
@@ -74,15 +75,34 @@ class TitleScene extends BaseScene {
   }
 
   async begin() {
-    if (this.started) return;
+    if (this.started || this.npcMenuTick) return;
     this.started = true;
     Audio8.sfx('select');
     tryFullscreen();
+    this.tweens.killTweensOf(this.prompt);
+    this.prompt.setVisible(false);
+    // Menu: continua da dove eri, nuova partita o scegli un livello
     const saved = Save.level();
-    if (saved && saved !== 'Level1' && this.scene.get(saved)) {
-      this.goTo(saved);
-      return;
+    const canContinue = saved && saved !== 'Title' && this.scene.get(saved);
+    const levelNames = ['Livello 1 – Il Gianicolo', 'Livello 2 – La pista', 'Livello 3 – Londra'];
+    for (;;) {
+      const main = canContinue ? ['Continua', 'Nuova partita', 'Scegli livello'] : ['Nuova partita', 'Scegli livello'];
+      if (Audio8.hasFiles()) main.push('Musica');
+      const i = await GianicoloBattle.choose(this, 'Menu', main, { x: 240, y: 168 });
+      if (i < 0) return;
+      Audio8.sfx('select');
+      if (main[i] === 'Continua') { this.goTo(saved); return; }
+      if (main[i] === 'Nuova partita') break;
+      if (main[i] === 'Musica') {
+        const opts = MUSIC_CHOICES.map(([label, on]) => (on === Audio8.useFiles ? '♪ ' : '') + label);
+        const m = await GianicoloBattle.choose(this, 'Che musica ascoltiamo?', [...opts, 'Indietro'], { x: 240, y: 172 });
+        if (m >= 0 && m < MUSIC_CHOICES.length) { Audio8.sfx('select'); Audio8.setUseFiles(MUSIC_CHOICES[m][1]); }
+        continue;
+      }
+      const lv = await GianicoloBattle.choose(this, 'Scegli livello', [...levelNames, 'Indietro'], { x: 240, y: 172 });
+      if (lv >= 0 && lv < levelNames.length) { Audio8.sfx('select'); this.goTo(LEVELS[lv].key); return; }
     }
+    Save.clear();
     this.busy = true;
     this.tweens.killTweensOf([this.titleGroup, this.prompt]);
     this.tweens.add({ targets: [this.titleGroup, this.prompt], alpha: 0, duration: 400 });
@@ -103,6 +123,8 @@ class TitleScene extends BaseScene {
     this.goTo('Level1');
   }
 }
+
+const MUSIC_CHOICES = [['Le nostre canzoni', true], ['Musichette del gioco', false]];
 
 // A schermo intero va il contenitore (gioco + controlli touch), non solo il canvas
 function tryFullscreen() {

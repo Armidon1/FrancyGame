@@ -57,6 +57,26 @@ function setupMuteButton() {
   draw();
 }
 
+// Menu di pausa: Esc da tastiera o il tasto in alto a destra
+function setupPause() {
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape' || e.repeat) return;
+    e.preventDefault();
+    Pause.open();
+  });
+  const btn = document.getElementById('pausebtn');
+  // il tasto si vede solo dove la pausa ha senso (non sul titolo)
+  setInterval(() => {
+    const on = game.scene.getScenes(true).some(s => PAUSABLE.includes(s.scene.key) || s.scene.key === 'Pause');
+    btn.style.display = on ? '' : 'none';
+  }, 300);
+  btn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    Audio8.unlock();
+    Pause.open();
+  });
+}
+
 // In verticale su telefono mettiamo in pausa (c'è l'avviso "gira il telefono")
 function setupOrientation() {
   const check = () => {
@@ -94,9 +114,10 @@ const game = new Phaser.Game({
   input: { activePointers: 3 },
   banner: false,
   scene: [
-    BootScene, TitleScene, Level1Scene, Level2Scene, Level3Scene, LondonNightScene, LevelCompleteScene, FinaleScene,
+    BootScene, TitleScene, Level1Scene, Level2Scene, Level3Scene, LondonNightScene, LevelCompleteScene, FinaleScene, PauseScene,
   ],
 });
 
 setupMuteButton();
 setupOrientation();
+setupPause();

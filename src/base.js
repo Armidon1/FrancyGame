@@ -24,6 +24,9 @@ class BaseScene extends Phaser.Scene {
     this.busy = false;
     this.leaving = false;
     this.aWaiter = null;
+    this.humBubbles = [];
+    this.nextHum = null;
+    this.humIndex = -1;
     this.cameras.main.fadeIn(450, ...FADE_RGB);
     this.events.once('shutdown', () => { this.tweens.killAll(); this.time.removeAllEvents(); });
   }
@@ -42,6 +45,35 @@ class BaseScene extends Phaser.Scene {
       r();
     }
     if (this.tick) this.tick(time, delta);
+    this.humBubbles = this.humBubbles.filter((e) => {
+      if (time > e.until) { e.b.destroy(); return false; }
+      // dentro lo schermo anche quando il personaggio è vicino al bordo
+      const cam = this.cameras.main, half = e.w / 2 + 2;
+      const x = Math.max(cam.scrollX + half, Math.min(cam.scrollX + 480 - half, e.ch.x));
+      e.b.setPosition(Math.round(x), Math.round(e.ch.y - 24));
+      return true;
+    });
+  }
+
+  // Canticchiare: fumetto con le note sopra il personaggio e qualche nota sottovoce
+  hum(ch, text, ms = 2600) {
+    const w = FontMetrics.measure(fontText(text)) + 10;
+    this.humBubbles.push({ b: Art.bubble(this, text), ch, w, until: this.time.now + ms });
+    const scale = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6'];
+    for (let i = 0; i < 4; i++) {
+      const f = NOTE_FREQ[scale[Math.floor(Math.random() * scale.length)]];
+      Audio8.tone(f, 0.22, { type: 'sine', vol: 0.05, delay: 0.15 + i * 0.26 });
+    }
+  }
+
+  // Ogni tanto, mentre si gioca liberamente, qualcuno canticchia: righe [[personaggio, testo], ...]
+  humTick(time, songs, allowed = true) {
+    if (this.nextHum === null) this.nextHum = time + 18000;
+    if (time < this.nextHum || this.locked || !allowed) return;
+    this.nextHum = time + 30000 + Math.random() * 15000;
+    this.humIndex = (this.humIndex + 1) % songs.length;
+    songs[this.humIndex].forEach(([ch, text], i) =>
+      this.time.delayedCall(i * 2000, () => { if (!this.locked) this.hum(ch, text); }));
   }
 
   wait(ms) {
