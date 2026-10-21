@@ -476,6 +476,7 @@ class Level1Scene extends BaseScene {
 
     this.addNPCs();
     this.enableChallenges();
+    Mode.hideSnacks(this, this.world, 'TOSU', 3); // Arduo: spuntini tra alberi e statue
     this.addHearts();
     this.addHUD();
     this.exclaim = new ExclaimMarker(this);

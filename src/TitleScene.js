@@ -93,7 +93,14 @@ class TitleScene extends BaseScene {
       if (i < 0) return;
       Audio8.sfx('select');
       if (main[i] === 'Continua') { this.goTo(saved); return; }
-      if (main[i] === 'Nuova partita') break;
+      if (main[i] === 'Nuova partita') {
+        // La modalità si sceglie solo qui: Viaggio (com'è sempre stato) o Arduo (PS che restano, spuntini in giro)
+        const m = await GianicoloBattle.choose(this, 'Che viaggio facciamo?', ['Viaggio: rilassato', 'Arduo: lotte toste e spuntini', 'Indietro'], { x: 240, y: 172 });
+        if (m < 0 || m > 1) continue;
+        Audio8.sfx('select');
+        Mode.start(m === 1 ? 'arduo' : 'viaggio');
+        break;
+      }
       if (main[i].startsWith('Effetto TV')) { Crt.set(!Crt.on); continue; }
       if (main[i] === 'Musica') {
         const opts = MUSIC_CHOICES.map(([label, on]) => (on === Audio8.useFiles ? '♪ ' : '') + label);

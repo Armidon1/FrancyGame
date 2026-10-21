@@ -10,9 +10,9 @@ const GIANICOLO_OPPONENTS = Object.freeze(Object.fromEntries([
   ['kidC', 'Ninja delle finte', 46, [['Finta della finta', 13, 'Neanche lui sa quale fosse quella vera.'], ['Indice rotante', 10, 'Un dito, grandi ambizioni.']]],
   ['kidD', 'Ninja tranquillo', 43, [['Sbadiglio tattico', 10, 'La calma è una tecnica.'], ['Palmo gentile', 12, 'Chiede scusa prima di colpire.']]],
   ['sindaco', 'Il Sindaco', 58, [['Discorso sul fiume', 14, 'Il discorso ha preso una lunga deviazione.'], ['Fascia tricolore', 12, 'Una mossa istituzionale.']]],
-  // Effetti: 'curse' = attacco di Francesca -65% e difesa di Simone su per CURSE_TURNS; 'poison' = -5% PS a ogni round.
+  // Effetti: 'curse' = Simone si carica (attacco su, danni subiti giù) per 2 turni; 'poison' = -5% PS a ogni round.
   ['simone', 'Simone', 56, [
-    ['Bestemmia Lampo', 0, 'Un lampo di parole irripetibili! Francesca è troppo scandalizzata per colpire forte, e Simone si sente invincibile.', 'curse'],
+    ['Bestemmia Lampo', 0, 'Un lampo di parole irripetibili! Simone si carica: più forte e più duro per due turni.', 'curse'],
     ['Abbraccione MAX', 16, 'Una stretta da orso: morbidissima, ma toglie il fiato.'],
     ['Scorreggia', 0, 'Un attacco chimico silenzioso ma letale. Francesca è avvelenata!', 'poison'],
   ]],
@@ -29,7 +29,7 @@ const LONDON_OPPONENTS = Object.freeze(Object.fromEntries([
   ['sherlock', 'sherlock', 'Sherlock Holmes', 52, [['Deduzione', 11, 'Elementare. Hai perso prima ancora di iniziare.'], ['Assolo di violino', 14, 'Alle tre di notte. Sotto casa tua.']]],
   ['maryPoppins', 'maryPoppins', 'Mary Poppins', 50, [['Zolletta di zucchero', 10, 'Un poco di zucchero… e la mossa va giù.'], ['Ombrello volante', 14, 'Atterra con una grazia insopportabile.']]],
   ['deSica', 'deSica', 'Christian De Sica', 56, [['Battuta da cinepanettone', 11, 'Ride da solo. Poi ride tutto il cinema.'], ['Ma che sei matta?!', 15, 'Detto con la erre più romana di Londra.']]],
-  ['julia', 'julia', 'Julia Roberts', 50, [['Sorriso da Oscar', 11, 'Abbagliante. Letteralmente.'], ['Pretty Woman', 14, 'Anche lei ha il suo Pretty Priviledge.']]],
+  ['julia', 'julia', 'Julia Roberts', 50, [['Sorriso da Oscar', 11, 'Abbagliante. Letteralmente.'], ['Pretty Woman', 14, 'Anche lei ha il suo Pretty Privilege.']]],
   ['hughGrant', 'hughGrant', 'Hugh Grant', 48, [['Balbettio adorabile', 10, 'Si scusa tre volte prima di colpire.'], ['Ciuffo anni \'90', 13, 'Un colpo di capelli perfetto.']]],
   ['harryPotter', 'harryPotter', 'Harry Potter', 48, [['Expelliarmus!', 11, 'Ti vola via il telefono.'], ['Gufo postino', 13, 'Ti consegna una lettera. In faccia.']]],
   ['beckham', 'beckham', 'David Beckham', 54, [['Tiro a giro', 12, 'Curva come una banana. Gol.'], ['Punizione all\'incrocio', 15, 'Il portiere non si è nemmeno mosso.']]],
@@ -44,45 +44,69 @@ function battleOpponent(key) {
   return null;
 }
 
-const CURSE_TURNS = 2;     // turni di Francesca indeboliti dopo Bestemmia Lampo
-const CURSE_ATTACK = 0.35; // attacco di Francesca -65%
-const GUARD_DEFENSE = 0.5; // danni ricevuti da Simone dimezzati
 const POISON_RATIO = 0.05; // veleno: 5% dei PS massimi a round
 
-const GIANICOLO_MOVES = Object.freeze([
-  { name: 'Spara Pipas', description: '2–5 pipas, 3–5 danni ciascuna.' },
-  { name: 'Campari Sprits', description: 'Attacco x1,5; danni subiti x1,35. Max 2.' },
-  { name: 'Pretty Priviledge', description: 'Attacco nemico -65%. Non cumulativo.' },
-  { name: 'Fuggi', description: 'Via con eleganza. Nessun contrattacco.' },
-]);
+// Bestemmia Lampo: chi la usa (sempre Simone) si carica, attacco su e danni subiti giù, per 2 turni suoi.
+// In Viaggio il bonus è fisso; in Arduo è "parecchio", ma ogni volta diverso.
+const BOOST_TURNS = 2;
+const BOOST_FIXED = Object.freeze({ atk: 1.6, def: 0.5 });
+function rollBoost(rng) {
+  return { atk: 1.4 + rng() * 0.6, def: 0.6 - rng() * 0.3 };
+}
 
-// Se combatte Simone: le sue mosse da avversario, rivolte al nemico.
-const SIMONE_FIGHTER_MOVES = Object.freeze([
-  { name: 'Abbraccione MAX', description: 'Una stretta da orso: 14–18 danni.' },
-  { name: 'Bestemmia Lampo', description: 'Attacco nemico -65% e difesa su per 2 turni.' },
-  { name: 'Scorreggia', description: 'Avvelena: -5% PS al nemico a ogni round.' },
-  { name: 'Fuggi', description: 'Via con eleganza. Nessun contrattacco.' },
-]);
+// Modalità di gioco: Viaggio (com'era) e Arduo (avversari più tosti, PS che restano tra una lotta e l'altra)
+const BATTLE_RULES = Object.freeze({
+  viaggio: Object.freeze({ enemyHP: 1, enemyDamage: 1, pretty: 0.35 }),
+  arduo: Object.freeze({ enemyHP: 1.25, enemyDamage: 1.25, pretty: 0.55 }), // Pretty Privilege: -65% ridotto del 30% -> -45%
+});
+const pct = (f) => Math.round(Math.abs(1 - f) * 100);
+
+function makeMoves(mode) {
+  const r = BATTLE_RULES[mode];
+  return {
+    francesca: Object.freeze([
+      { name: 'Spara Pipas', description: '2–5 pipas, 3–5 danni ciascuna.' },
+      { name: 'Campari Sprits', description: 'Attacco x1,5; danni subiti x1,35. Max 2.' },
+      { name: 'Pretty Privilege', description: `Attacco nemico -${pct(r.pretty)}%. Non cumulativo.` },
+      { name: 'Fuggi', description: 'Via con eleganza. Nessun contrattacco.' },
+    ]),
+    // Se combatte Simone: le sue mosse da avversario, rivolte al nemico.
+    simone: Object.freeze([
+      { name: 'Abbraccione MAX', description: 'Una stretta da orso: 14–18 danni.' },
+      { name: 'Bestemmia Lampo', description: mode === 'arduo'
+        ? 'Attacco e difesa su di parecchio (a caso) per 2 turni.'
+        : `Attacco +${pct(BOOST_FIXED.atk)}% e danni subiti -${pct(BOOST_FIXED.def)}% per 2 turni.` },
+      { name: 'Scorreggia', description: 'Avvelena: -5% PS al nemico a ogni round.' },
+      { name: 'Fuggi', description: 'Via con eleganza. Nessun contrattacco.' },
+    ]),
+  };
+}
+const NINJA_MOVES = Object.freeze({ viaggio: makeMoves('viaggio'), arduo: makeMoves('arduo') });
+const GIANICOLO_MOVES = NINJA_MOVES.viaggio.francesca;
+const SIMONE_FIGHTER_MOVES = NINJA_MOVES.viaggio.simone;
+const BATTLE_MENUS = new Set(Object.values(NINJA_MOVES).flatMap(m => [m.francesca, m.simone]));
 const FIGHTER_NAMES = Object.freeze({ francesca: 'Francesca', simone: 'Simone' });
 
 class GianicoloBattleState {
-  constructor(key, rng = Math.random, fighter = 'francesca') {
+  // opts: { mode: 'viaggio' | 'arduo', playerHP } (in Arduo i PS arrivano dalla lotta prima)
+  constructor(key, rng = Math.random, fighter = 'francesca', opts = {}) {
     this.opponent = battleOpponent(key);
     if (!this.opponent) throw new Error('Avversario sconosciuto: ' + key);
     if (!FIGHTER_NAMES[fighter]) throw new Error('Combattente sconosciuto: ' + fighter);
+    this.mode = opts.mode === 'arduo' ? 'arduo' : 'viaggio';
+    this.rules = BATTLE_RULES[this.mode];
     this.fighter = fighter;
-    this.moves = fighter === 'simone' ? SIMONE_FIGHTER_MOVES : GIANICOLO_MOVES;
+    this.moves = NINJA_MOVES[this.mode][fighter];
     this.rng = rng;
-    this.playerMaxHP = this.playerHP = 100;
-    this.enemyMaxHP = this.enemyHP = this.opponent.hp;
+    this.playerMaxHP = 100;
+    this.playerHP = Number.isFinite(opts.playerHP) ? Math.max(0, Math.min(100, Math.round(opts.playerHP))) : 100;
+    this.enemyMaxHP = this.enemyHP = Math.round(this.opponent.hp * this.rules.enemyHP);
     this.spritsStacks = 0;
     this.pretty = false;
-    this.weakTurns = 0;
-    this.guardTurns = 0;
     this.poisoned = false;
-    // Effetti delle mosse di Simone quando combatte lui (contano gli attacchi nemici).
-    this.enemyWeakTurns = 0;
-    this.playerGuardTurns = 0;
+    // Bestemmia Lampo: carica di chi l'ha usata ({ turns, atk, def })
+    this.playerBoost = { turns: 0, atk: 1, def: 1 };
+    this.enemyBoost = { turns: 0, atk: 1, def: 1 };
     this.enemyPoisoned = false;
     this.fled = false;
     this.turn = 'player';
@@ -93,6 +117,15 @@ class GianicoloBattleState {
   roll(min, max) {
     return min + Math.floor(Math.max(0, Math.min(0.999999999, this.rng())) * (max - min + 1));
   }
+  newBoost() {
+    const b = this.mode === 'arduo' ? rollBoost(() => Math.max(0, Math.min(0.999999999, this.rng()))) : BOOST_FIXED;
+    return { turns: BOOST_TURNS, atk: b.atk, def: b.def };
+  }
+  // moltiplicatori della carica, solo finché dura
+  get playerAtk() { return this.playerBoost.turns ? this.playerBoost.atk : 1; }
+  get playerDef() { return this.playerBoost.turns ? this.playerBoost.def : 1; }
+  get enemyAtk() { return this.enemyBoost.turns ? this.enemyBoost.atk : 1; }
+  get enemyDef() { return this.enemyBoost.turns ? this.enemyBoost.def : 1; }
   playerMove(index) {
     if (!Number.isInteger(index) || index < 0 || index > 3) throw new RangeError('Mossa non valida');
     if (this.outcome || this.turn !== 'player') return { skipped: true, damage: 0, hits: [], buff: null, flee: this.fled, outcome: this.outcome };
@@ -101,20 +134,21 @@ class GianicoloBattleState {
       this.fled = report.flee = true;
     } else if (this.fighter === 'simone') {
       if (index === 0) {
-        report.damage = this.roll(14, 18);
+        report.damage = Math.max(1, Math.round(this.roll(14, 18) * this.playerAtk * this.enemyDef));
         report.hits.push(report.damage);
         report.appliedDamage = Math.min(this.enemyHP, report.damage);
         this.enemyHP = Math.max(0, this.enemyHP - report.damage);
       } else if (index === 1) {
-        report.buff = { type: 'curse', changed: !this.enemyWeakTurns };
-        this.enemyWeakTurns = this.playerGuardTurns = CURSE_TURNS;
+        report.buff = { type: 'curse', changed: !this.playerBoost.turns };
+        this.playerBoost = this.newBoost();
+        report.boost = { ...this.playerBoost };
       } else {
         report.buff = { type: 'poison', changed: !this.enemyPoisoned };
         this.enemyPoisoned = true;
       }
     } else if (index === 0) {
       const count = this.roll(2, 5);
-      const factor = Math.pow(1.5, this.spritsStacks) * (this.weakTurns ? CURSE_ATTACK : 1) * (this.guardTurns ? GUARD_DEFENSE : 1);
+      const factor = Math.pow(1.5, this.spritsStacks) * this.playerAtk * this.enemyDef;
       for (let i = 0; i < count; i++) report.hits.push(Math.max(1, Math.round(this.roll(3, 5) * factor)));
       report.damage = report.hits.reduce((a, b) => a + b, 0);
       report.appliedDamage = Math.min(this.enemyHP, report.damage);
@@ -124,12 +158,11 @@ class GianicoloBattleState {
       this.spritsStacks = Math.min(2, before + 1);
       report.buff = { type: 'sprits', stacks: this.spritsStacks, changed: before !== this.spritsStacks, attack: Math.pow(1.5, this.spritsStacks), incoming: Math.pow(1.35, this.spritsStacks) };
     } else if (index === 2) {
-      report.buff = { type: 'pretty', changed: !this.pretty, enemyAttack: 0.35 };
+      report.buff = { type: 'pretty', changed: !this.pretty, enemyAttack: this.rules.pretty };
       this.pretty = true;
     }
-    // Gli effetti di Bestemmia Lampo durano un numero di turni di Francesca.
-    if (this.weakTurns) this.weakTurns--;
-    if (this.guardTurns) this.guardTurns--;
+    // La carica dura due turni di chi l'ha usata (non conta il turno in cui la usa).
+    if (this.playerBoost.turns && !(report.buff && report.buff.type === 'curse')) this.playerBoost.turns--;
     this.turn = this.outcome ? 'done' : 'enemy';
     report.outcome = this.outcome;
     return report;
@@ -138,19 +171,19 @@ class GianicoloBattleState {
     if (this.outcome || this.turn !== 'enemy') return { skipped: true, damage: 0, hits: [], buff: null, flee: this.fled, outcome: this.outcome };
     // Non ripete un effetto ancora attivo.
     const usable = this.opponent.moves.filter(m =>
-      !(m.effect === 'curse' && (this.weakTurns || this.guardTurns)) && !(m.effect === 'poison' && this.poisoned));
+      !(m.effect === 'curse' && this.enemyBoost.turns) && !(m.effect === 'poison' && this.poisoned));
     const move = usable[this.roll(0, usable.length - 1)];
-    let damage = 0;
+    let damage = 0, boost = null;
     if (move.effect === 'curse') {
-      this.weakTurns = this.guardTurns = CURSE_TURNS;
+      this.enemyBoost = this.newBoost();
+      boost = { ...this.enemyBoost };
     } else if (move.effect === 'poison') {
       this.poisoned = true;
     } else {
-      damage = Math.max(1, Math.round(move.damage * (this.pretty ? 0.35 : 1) * Math.pow(1.35, this.spritsStacks)
-        * (this.enemyWeakTurns ? CURSE_ATTACK : 1) * (this.playerGuardTurns ? GUARD_DEFENSE : 1)));
+      damage = Math.max(1, Math.round(move.damage * this.rules.enemyDamage * (this.pretty ? this.rules.pretty : 1)
+        * Math.pow(1.35, this.spritsStacks) * this.enemyAtk * this.playerDef));
     }
-    if (this.enemyWeakTurns) this.enemyWeakTurns--;
-    if (this.playerGuardTurns) this.playerGuardTurns--;
+    if (this.enemyBoost.turns && move.effect !== 'curse') this.enemyBoost.turns--;
     const appliedDamage = Math.min(this.playerHP, damage);
     this.playerHP = Math.max(0, this.playerHP - damage);
     let poison = 0;
@@ -164,8 +197,12 @@ class GianicoloBattleState {
       this.enemyHP -= enemyPoison;
     }
     this.turn = this.outcome ? 'done' : 'player';
-    return { name: move.name, text: move.text, effect: move.effect, damage, appliedDamage, poison, enemyPoison, hits: damage ? [damage] : [], buff: null, flee: false, outcome: this.outcome };
+    return { name: move.name, text: move.text, effect: move.effect, boost, damage, appliedDamage, poison, enemyPoison, hits: damage ? [damage] : [], buff: null, flee: false, outcome: this.outcome };
   }
+}
+
+function boostText(b) {
+  return 'Attacco +' + pct(b.atk) + '%, danni subiti -' + pct(b.def) + '% per due turni.';
 }
 
 // Stati alterati su al massimo due righe dentro il riquadro.
@@ -198,12 +235,17 @@ function battleBaseCanvas() {
   return c;
 }
 
+// Chi porta avanti la storia non regala spuntini chiacchierando (la chiacchierata fa già succedere cose).
+const STORY_NPCS = new Set(['simone', 'commessa', 'barista']);
+// Le guardie reali non si muovono e Mr Bean non molla niente a nessuno: da loro niente spuntini, mai.
+const NO_SNACK_NPCS = new Set(['guardia', 'mrBean']);
+
 class GianicoloBattle {
   constructor(scene, npc, opts = {}) {
     this.scene = scene;
     this.npc = npc;
     const key = opts.opponent || (typeof npc === 'string' ? npc : (npc?.key || npc?.ch?.key || npc?.sprite?.texture?.key));
-    this.state = new GianicoloBattleState(key, Math.random, opts.fighter || 'francesca');
+    this.state = new GianicoloBattleState(key, Math.random, opts.fighter || 'francesca', { mode: opts.mode, playerHP: opts.playerHP });
     this.fighterName = FIGHTER_NAMES[this.state.fighter];
     this.returnSong = opts.returnSong || SONGS.gianicolo;
     this.background = opts.background || 'ninjaBg';
@@ -228,19 +270,48 @@ class GianicoloBattle {
     try {
       const choice = await GianicoloBattle.choose(scene, profile.name, ['Parla', 'Sfida!', 'Annulla']);
       if (!alive()) return;
+      const hard = typeof Mode !== 'undefined' && Mode.hard;
       if (choice === 0) {
         if (original) await original();
+        // Arduo: ogni tanto, chiacchierando, salta fuori uno spuntino (non da chi porta avanti la storia)
+        scene.snackTalks = scene.snackTalks || new Set();
+        if (hard && alive() && !scene.leaving && (!opts.canUnlock || opts.canUnlock()) && !STORY_NPCS.has(profile.key) && !NO_SNACK_NPCS.has(profile.key)
+          && !scene.snackTalks.has(npc) && Math.random() < 0.35) {
+          scene.snackTalks.add(npc);
+          await scene.say(profile.name, 'Ah, quasi dimenticavo: prendi questo, per strada serve energia!');
+          if (alive()) await Mode.give(scene, Mode.randomSnack());
+        }
       } else if (choice === 1) {
-        // Simone non sfida se stesso.
-        const fighters = profile.key === 'simone' ? ['francesca'] : ['francesca', 'simone'];
+        // Simone combatte solo dove viaggia con Francesca (Londra: opts.partner), e mai contro se stesso.
+        const fighters = opts.partner && profile.key !== 'simone' ? ['francesca', 'simone'] : ['francesca'];
+        // Arduo: se sono tutti a terra e lo zaino è vuoto, una torta d'emergenza (mai bloccati)
+        if (hard && fighters.every(f => Mode.hp(f) <= 0) && !Mode.total()) {
+          await scene.say(null, 'Siete senza forze... ma qualcuno ha lasciato una torta rustica proprio qui accanto!');
+          if (alive()) await Mode.give(scene, 'torta');
+          return;
+        }
         let fighter = fighters[0];
         if (fighters.length > 1) {
-          const pick = await GianicoloBattle.choose(scene, 'Chi combatte?', [...fighters.map(f => FIGHTER_NAMES[f]), 'Annulla']);
+          const label = f => FIGHTER_NAMES[f] + (hard ? '  PS ' + Mode.hp(f) + '/100' : '');
+          const pick = await GianicoloBattle.choose(scene, 'Chi combatte?', [...fighters.map(label), 'Annulla']);
           if (!alive() || pick < 0 || pick >= fighters.length) return;
           fighter = fighters[pick];
         }
-        scene.battle = new GianicoloBattle(scene, npc, { opponent: profile.key, fighter, returnSong: opts.returnSong, background: opts.background });
-        await scene.battle.run();
+        if (hard && Mode.hp(fighter) <= 0) {
+          await scene.say(null, FIGHTER_NAMES[fighter] + ' è senza forze! Apri lo zaino dal menu di pausa: uno spuntino e si riparte.');
+          return;
+        }
+        scene.battle = new GianicoloBattle(scene, npc, { opponent: profile.key, fighter, returnSong: opts.returnSong,
+          background: opts.background, mode: hard ? 'arduo' : 'viaggio', playerHP: hard ? Mode.hp(fighter) : 100 });
+        const result = await scene.battle.run();
+        if (hard) Mode.setHP(fighter, result.state.playerHP);
+        // Arduo: a volte chi hai battuto ti regala uno spuntino
+        if (hard && result.outcome === 'victory' && alive() && !NO_SNACK_NPCS.has(profile.key) && Math.random() < 0.45) {
+          scene.battle.destroy();
+          scene.battle = null;
+          await scene.say(profile.name, 'Bella lotta! Tieni, te lo sei meritato.');
+          if (alive()) await Mode.give(scene, Mode.randomSnack());
+        }
       }
     } finally {
       if (scene.challengeSession === session) {
@@ -263,7 +334,7 @@ class GianicoloBattle {
     const text = (x, y, value, opts = {}) => {
       const t = addText(scene, x, y, value, { color: 0x2a1d1a, ...opts }); root.add(t); return t;
     };
-    const battleMenu = options === GIANICOLO_MOVES || options === SIMONE_FIGHTER_MOVES;
+    const battleMenu = BATTLE_MENUS.has(options);
     const cols = battleMenu ? 2 : 1;
     let index = 0, done = false, requested = false, ignoreUntil = 0;
     let prevDir = Controls.dir();
@@ -428,19 +499,17 @@ class GianicoloBattle {
     this.assertAlive();
     const s = this.state;
     this.enemyPS.setText('PS ' + s.enemyHP + '/' + s.enemyMaxHP);
-    this.playerPS.setText('PS ' + s.playerHP + '/100');
+    this.playerPS.setText('PS ' + s.playerHP + '/' + s.playerMaxHP);
     [[this.enemyBar, s.enemyHP / s.enemyMaxHP], [this.playerBar, s.playerHP / 100]].forEach(([b, ratio]) => {
       b.setDisplaySize(Math.max(0.01, 188 * ratio), 3);
       b.setFillStyle(ratio > 0.5 ? 0x57b86a : ratio > 0.2 ? 0xe6ad43 : 0xd9434f);
     });
     const enemy = [], player = [];
-    if (s.pretty) enemy.push('Attacco -65%');
-    if (s.guardTurns) enemy.push('Difesa + (' + s.guardTurns + ')');
-    if (s.enemyWeakTurns) enemy.push('Attacco -65% (' + s.enemyWeakTurns + ')');
+    if (s.pretty) enemy.push('Attacco -' + pct(s.rules.pretty) + '%');
+    if (s.enemyBoost.turns) enemy.push('Carico: ATK+ DIF+ (' + s.enemyBoost.turns + ')');
     if (s.enemyPoisoned) enemy.push('Veleno');
-    if (s.playerGuardTurns) player.push('Difesa + (' + s.playerGuardTurns + ')');
+    if (s.playerBoost.turns) player.push('Carico: ATK+ DIF+ (' + s.playerBoost.turns + ')');
     if (s.spritsStacks) player.push('Sprits ' + s.spritsStacks + '/2: ATK+ DIF-');
-    if (s.weakTurns) player.push('Attacco -65% (' + s.weakTurns + ')');
     if (s.poisoned) player.push('Avvelenata');
     this.enemyBuff.setText(statusLines(enemy));
     this.playerBuff.setText(statusLines(player));
@@ -476,14 +545,16 @@ class GianicoloBattle {
     }
     Audio8.sfx(index === 2 ? 'bump' : 'whoosh');
     await this.guarded(this.animate({ targets: this.fr, y: this.fr.y - 10, duration: 110, yoyo: true, repeat: 1 }));
-    this.enemy.setTint(index === 2 ? 0x9ad25a : 0x8fa8e8);
-    await this.guarded(this.animate({ targets: this.enemy, alpha: 0.5, duration: 120, yoyo: true, repeat: 1 }));
-    this.enemy.clearTint();
+    // la Bestemmia carica Simone (si colora lui), la Scorreggia avvelena il nemico
+    const who = index === 2 ? this.enemy : this.fr;
+    who.setTint(index === 2 ? 0x9ad25a : 0xffb060);
+    await this.guarded(this.animate({ targets: who, alpha: 0.5, duration: 120, yoyo: true, repeat: 1 }));
+    who.clearTint();
     this.refresh();
     if (index === 1) {
-      await this.say(report.buff.changed
-        ? 'Un lampo di parole irripetibili! ' + foe + ' resta senza parole: attacco -65%. E Simone si sente invincibile.'
-        : 'Un\'altra bestemmia: l\'effetto dura di nuovo due turni.');
+      await this.say((report.buff.changed
+        ? 'Un lampo di parole irripetibili! ' + foe + ' resta di sasso, e Simone si carica. '
+        : 'Un\'altra bestemmia: la carica riparte da capo. ') + boostText(report.boost));
     } else {
       await this.say(report.buff.changed
         ? 'Un attacco chimico silenzioso ma letale! ' + foe + ' respira la puzza e si avvelena.'
@@ -520,7 +591,7 @@ class GianicoloBattle {
         this.refresh();
         await this.say(index === 1
           ? (report.buff.changed ? 'Coraggio liquido! Più attacco, ma anche più danni subiti.' : 'Due Sprits bastano: il bonus è già al massimo.')
-          : (report.buff.changed ? 'Uno sguardo irresistibile: attacco nemico ridotto del 65%!' : 'Il fascino è già al massimo. Il malus non si somma.'));
+          : (report.buff.changed ? 'Uno sguardo irresistibile: attacco nemico ridotto del ' + pct(this.state.rules.pretty) + '%!' : 'Il fascino è già al massimo. Il malus non si somma.'));
       }
       if (this.state.outcome) break;
       const enemyReport = this.state.enemyMove();
@@ -532,14 +603,15 @@ class GianicoloBattle {
         this.refresh();
         await this.say(enemyReport.text + ' ' + this.fighterName + ' perde ' + enemyReport.damage + ' PS.');
       } else {
-        // Mosse di stato: Simone saltella, Francesca si colora dell'effetto.
+        // Mosse di stato: Simone saltella; la puzza colora Francesca, la bestemmia carica lui.
         Audio8.sfx(enemyReport.effect === 'poison' ? 'bump' : 'whoosh');
         await this.guarded(this.animate({ targets: this.enemy, y: this.enemy.y - 10, duration: 110, yoyo: true, repeat: 1 }));
-        this.fr.setTint(enemyReport.effect === 'poison' ? 0x9ad25a : 0x8fa8e8);
-        await this.guarded(this.animate({ targets: this.fr, alpha: 0.5, duration: 120, yoyo: true, repeat: 1 }));
-        this.fr.clearTint();
+        const who = enemyReport.effect === 'poison' ? this.fr : this.enemy;
+        who.setTint(enemyReport.effect === 'poison' ? 0x9ad25a : 0xffb060);
+        await this.guarded(this.animate({ targets: who, alpha: 0.5, duration: 120, yoyo: true, repeat: 1 }));
+        who.clearTint();
         this.refresh();
-        await this.say(enemyReport.text);
+        await this.say(enemyReport.text + (enemyReport.boost ? ' ' + boostText(enemyReport.boost) : ''));
       }
       if (enemyReport.poison) {
         this.fr.setTint(0x9ad25a);
@@ -562,7 +634,9 @@ class GianicoloBattle {
       Audio8.sfx('jingle');
       await this.say('Hai vinto! Si festeggia senza togliere cuoricini a nessuno.');
     } else if (outcome === 'defeat') {
-      await this.say('Pausa merenda! Questa volta è andata così. Puoi riprovare quando vuoi: nessun game over.');
+      await this.say(this.state.mode === 'arduo'
+        ? 'Pausa merenda! Nessun game over, ma i PS persi restano: serve uno spuntino dallo zaino.'
+        : 'Pausa merenda! Questa volta è andata così. Puoi riprovare quando vuoi: nessun game over.');
     } else {
       await this.say('Ritirata strategica! Nessuno ti insegue, promesso.');
     }

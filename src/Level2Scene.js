@@ -10,6 +10,12 @@ const RINK = {
   simone: { x: 240, y: 86 },
 };
 
+// Il varco per uscire, sulla balaustra di destra (si apre solo alla fine)
+const EXIT = { y0: 300, y1: 356 };
+
+// Simone sul ghiaccio: più lento e meno sciolto di Francesca
+const SIMONE_ICE = { acc: 170, maxV: 74, catchUp: 86, drag: 1.3, gap: 22 };
+
 const ICE = {
   acc: 230,        // accelerazione con la croce premuta
   maxV: 92,
@@ -297,15 +303,18 @@ class Level2Scene extends BaseScene {
     pts.forEach(([x, y]) => g.lineTo(x, y));
     g.strokePath();
     let i = 0;
+    this.bulbs = [];
     for (let x = 6; x < 480; x += 12) {
       const y = 8 + Math.round(Math.sin(Math.PI * ((x % 96) / 96)) * 9);
       const b = this.add.image(x, y + 1, `bulb_${colors[i++ % colors.length]}`).setOrigin(0.5, 0).setDepth(4);
+      this.bulbs.push(b);
       this.tweens.add({ targets: b, alpha: 0.45, duration: 500 + Math.random() * 700, yoyo: true, repeat: -1, delay: Math.random() * 1000 });
     }
     // lucine lungo gli spalti
     for (let y = 60; y < 600; y += 14) {
       for (const x of [46, 434]) {
         const b = this.add.image(x, y, `bulb_${colors[i++ % colors.length]}`).setDepth(4);
+        this.bulbs.push(b);
         this.tweens.add({ targets: b, alpha: 0.4, duration: 600 + Math.random() * 600, yoyo: true, repeat: -1, delay: Math.random() * 1000 });
       }
     }
@@ -384,7 +393,10 @@ class Level2Scene extends BaseScene {
   async intro() {
     await this.wait(500);
     await this.levelCard(2, 'La pista di pattinaggio');
-    await this.talk([[null, 'Oh no! Simone è cascato dall\'altra parte della pista! Vallo a recuperare!']]);
+    await this.talk([
+      [null, 'Oh no! Simone è cascato dall\'altra parte della pista! Vallo a recuperare!'],
+      [null, 'Per rialzarsi gli serve tutto il tuo amore: raccogli i 5 cuoricini sul ghiaccio prima di arrivare da lui.'],
+    ]);
     await this.tweenP({ targets: this.cameras.main, scrollY: RINK.H - 270, duration: 1800, ease: 'Sine.InOut' });
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 10);
     this.busy = false;
@@ -407,7 +419,8 @@ class Level2Scene extends BaseScene {
 
   tick(time, delta) {
     const dt = delta / 1000;
-    for (const s of this.skaters) s.place(dt);
+    if (!this.crowdGone) for (const s of this.skaters) s.place(dt);
+    if (this.romance) { this.tickRomance(time, dt); return; }
     if (this.stars) this.updateStars(time);
     this.humTick(time, this.humSongs, !this.falling);
 
@@ -439,6 +452,7 @@ class Level2Scene extends BaseScene {
         this.hudText.setText(`${this.heartCount}/5`);
         this.tweens.add({ targets: this.hudHeart, scale: 1.6, duration: 120, yoyo: true });
         this.tweens.add({ targets: h.img, y: h.img.y - 16, alpha: 0, scale: 2, duration: 400, onComplete: () => h.img.destroy() });
+        if (this.heartCount === 5) this.toast('Tutti i cuoricini! Adesso Simone ce la fa a rialzarsi.', 3000);
       }
     }
 
@@ -452,10 +466,11 @@ class Level2Scene extends BaseScene {
     }
     this.player.sprite.setAlpha(time < this.invulnUntil ? (Math.floor(time / 90) % 2 ? 0.35 : 1) : 1);
 
-    // arrivo da Simone
+    // arrivo da Simone (se mancano cuoricini lo dice una volta, poi di nuovo solo dopo essersi allontanata)
     const sdx = Math.abs(this.player.x - RINK.simone.x);
     const sdy = this.player.y - RINK.simone.y;
     if (sdx < 18 && sdy > -14 && sdy < 30) this.rescue();
+    else if (Math.hypot(sdx, sdy) > 60) this.nagged = false;
   }
 
   // Fisica del ghiaccio: accelerazione dolce, attrito basso, rimbalzo morbido sulle balaustre
@@ -480,7 +495,11 @@ class Level2Scene extends BaseScene {
     // tieni i piedi dentro il ghiaccio (lascia un po' di margine sopra per la testa)
     const limit = -ICE.feetR;
     const d = rinkSD(nx, ny - 2);
-    if (d > limit) {
+    // dal varco aperto si esce di lato
+    const inGap = this.exitOpen && ny > EXIT.y0 + 6 && ny < EXIT.y1 - 2 && nx > RINK.x1 - 40;
+    if (inGap) {
+      if (nx > RINK.x1 + 26) this.leaveRink();
+    } else if (d > limit) {
       const e = 0.5;
       const gx = (rinkSD(nx + e, ny - 2) - rinkSD(nx - e, ny - 2)) / (2 * e);
       const gy = (rinkSD(nx, ny - 2 + e) - rinkSD(nx, ny - 2 - e)) / (2 * e);
@@ -569,11 +588,30 @@ class Level2Scene extends BaseScene {
 
   async rescue() {
     if (this.busy) return;
+    const p = this.player;
+    if (this.heartCount < 5) {
+      if (this.nagged) return;
+      this.nagged = true;
+      this.busy = true;
+      this.vx = 0;
+      this.vy = 0;
+      const missing = 5 - this.heartCount;
+      await this.talk([
+        ['Simone', 'Piccina! Sei venuta! Però… da solo non ce la faccio a rialzarmi.'],
+        ['Simone', missing === 1
+          ? 'Mi manca solo un cuoricino di forza. Uno! Io ti aspetto qui, tanto non vado da nessuna parte.'
+          : `Mi mancano ancora ${missing} cuoricini di forza. Io ti aspetto qui, tanto non vado da nessuna parte.`],
+      ]);
+      // un piccolo passo indietro, così non riparte subito il dialogo
+      this.vy = 40;
+      this.busy = false;
+      Controls.reset();
+      return;
+    }
     this.busy = true;
     this.bubbleTimer.remove();
     this.simoneBubble.destroy();
     Audio8.stopSong(1.2);
-    const p = this.player;
     this.vx = 0;
     this.vy = 0;
     this.invulnUntil = Infinity;
@@ -587,11 +625,9 @@ class Level2Scene extends BaseScene {
     await this.wait(300);
     await this.talk([
       ['Simone', 'Piccina! Sapevo che saresti venuta a prendermi.'],
+      ['Simone', 'E con tutti quei cuoricini… mi sento già più forte.'],
       [null, 'Il tuo orsacchiotto è salvo.'],
     ]);
-    if (this.heartCount === 5) {
-      await this.say('Simone', 'E hai pure raccolto tutti i cuoricini! Sei fortissima.');
-    }
     // Simone si rialza e si tengono per mano
     Audio8.sfx('pop');
     this.simone.sprite.setTexture('simone', 0);
@@ -603,14 +639,192 @@ class Level2Scene extends BaseScene {
     const h = this.add.image((p.x + this.simone.x) / 2, p.y - 28, 'heartBig').setDepth(2000).setScale(0);
     Audio8.sfx('heart');
     await this.tweenP({ targets: h, scale: 1, duration: 400, ease: 'Back.Out' });
-    // pattinano insieme verso il basso
+    this.tweens.add({ targets: h, y: h.y - 10, alpha: 0, delay: 600, duration: 800, onComplete: () => h.destroy() });
+    await this.startRomance();
+  }
+
+  // Luci soffuse rosa e fucsia, la pista si svuota e restano solo loro due
+  async startRomance() {
+    Audio8.playSong(SONGS.lullaby);
+    this.floatHearts(16, { x: RINK.x0, y: RINK.y0, w: RINK.x1 - RINK.x0, h: RINK.y1 - RINK.y0 }, { depth: 945 });
+    const full = { x: 0, y: 0, w: RINK.W, h: RINK.H };
+    this.moodDark = this.add.rectangle(full.x, full.y, full.w, full.h, 0x2a0634, 0).setOrigin(0, 0).setDepth(940);
+    this.moodPink = this.add.rectangle(full.x, full.y, full.w, full.h, 0xff3f9a, 0).setOrigin(0, 0).setDepth(941)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: this.moodDark, fillAlpha: 0.55, duration: 2600 });
+    this.tweens.add({ targets: this.moodPink, fillAlpha: 0.1, duration: 2600 });
+    // lucine e faretti che diventano rosa
+    this.bulbs.forEach((b, i) => this.time.delayedCall(i * 12, () => b.setTint(i % 2 ? 0xff6ac8 : 0xffa0d8).setBlendMode(Phaser.BlendModes.ADD).setDepth(942)));
+    // faretti morbidi: anelli concentrici che sfumano verso il bordo
+    this.spots = [0, 1, 2].map(i => {
+      const c = this.add.container(120 + i * 120, 200 + i * 140).setDepth(943).setAlpha(0);
+      for (const r of [50, 40, 30, 20]) {
+        c.add(this.add.circle(0, 0, r, i === 1 ? 0xff40c0 : 0xff8ad0, 0.05).setBlendMode(Phaser.BlendModes.ADD));
+      }
+      this.tweens.add({ targets: c, alpha: 1, duration: 2600 });
+      this.tweens.add({ targets: c, x: 360 - i * 100, y: 460 - i * 130, duration: 5200 + i * 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      return c;
+    });
+    this.flags.forEach(f => this.tweens.add({ targets: f, alpha: 0, duration: 800 }));
+    await this.wait(900);
+    // tutti se ne vanno: i pattinatori scivolano fuori dalla pista, il pubblico esce dagli spalti
+    this.crowdGone = true;
+    for (const sk of this.skaters) {
+      const out = sk.ch.x < 240 ? -24 : RINK.W + 24;
+      sk.ch.walk(out < 0 ? 'left' : 'right', 0.6);
+      this.tweens.add({ targets: sk.ch, x: out, duration: 1800 + Math.random() * 1400, delay: Math.random() * 600, ease: 'Sine.In',
+        onUpdate: () => sk.ch.sync(), onComplete: () => sk.ch.destroy() });
+      this.tweens.add({ targets: [sk.ch.sprite, sk.ch.shadow], alpha: 0, delay: 1600, duration: 1200 });
+    }
+    const goingHome = this.fans;
+    this.fans = [];
+    goingHome.forEach((f, i) => {
+      this.tweens.add({ targets: f, x: f.x < 240 ? f.x - 30 : f.x + 30, alpha: 0, duration: 900, delay: 300 + (i % 9) * 160,
+        onComplete: () => f.destroy() });
+    });
+    await this.wait(3200);
+    this.skaters = [];
+    await this.talk([
+      ['Simone', 'Guarda… se ne sono andati tutti.'],
+      ['Simone', 'La pista è tutta nostra. Facciamo un giro? Vai pure avanti tu, io… ti seguo. Più o meno.'],
+      [null, 'Raccogliete tutti i cuoricini che volete. Quando vuoi andare, esci dal varco sulla destra.'],
+    ]);
+    this.openExit();
+    this.heartTotal = this.heartCount;
+    this.hudText.setText(String(this.heartTotal));
+    this.hearts = [];
+    for (let i = 0; i < 6; i++) this.spawnHeart();
+    this.svx = 0;
+    this.svy = 0;
+    this.nextGrumble = this.time.now + 5000;
+    this.romance = true;
+    this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 10);
+    this.busy = false;
+    Controls.reset();
+  }
+
+  // Varco nella balaustra di destra, con un cartello che pulsa
+  openExit() {
+    this.exitOpen = true;
+    const x = RINK.x1 - 2;
+    this.add.rectangle(x, EXIT.y0, RINK.W - x, EXIT.y1 - EXIT.y0, 0x9a6a48).setOrigin(0, 0).setDepth(1);
+    this.add.rectangle(x, EXIT.y0, RINK.W - x, 2, 0x2a1d1a).setOrigin(0, 0).setDepth(1);
+    this.add.rectangle(x, EXIT.y1 - 2, RINK.W - x, 2, 0x2a1d1a).setOrigin(0, 0).setDepth(1);
+    // niente lucine dentro il varco
+    this.bulbs = this.bulbs.filter(b => {
+      const inGap = b.x > RINK.x1 - 8 && b.y > EXIT.y0 - 4 && b.y < EXIT.y1 + 4;
+      if (inGap) b.destroy();
+      return !inGap;
+    });
+    const sign = addText(this, RINK.x1 - 6, EXIT.y0 - 12, 'USCITA', { color: 0xffd0ea, shadow: 0x5a1040, origin: [1, 0.5], depth: 946 });
+    this.tweens.add({ targets: sign, alpha: 0.4, duration: 700, yoyo: true, repeat: -1 });
+  }
+
+  // Un cuoricino in un punto libero del ghiaccio, non troppo vicino a Francesca
+  spawnHeart() {
+    let x = 240, y = 300;
+    for (let k = 0; k < 30; k++) {
+      x = RINK.x0 + 20 + Math.random() * (RINK.x1 - RINK.x0 - 40);
+      y = RINK.y0 + 24 + Math.random() * (RINK.y1 - RINK.y0 - 40);
+      if (rinkSD(x, y) < -14 && Math.hypot(x - this.player.x, y - this.player.y) > 50) break;
+    }
+    const img = this.add.image(x, y - 8, Math.random() < 0.5 ? 'heart' : 'heartPink').setDepth(945).setScale(0);
+    this.tweens.add({ targets: img, scale: 1, duration: 300, ease: 'Back.Out' });
+    this.tweens.add({ targets: img, y: y - 11, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    this.hearts.push({ img, x, y, got: false });
+  }
+
+  tickRomance(time, dt) {
+    if (this.leavingRink) { this.followSimone(time, dt); return; }
+    if (this.busy || this.leaving || this.dialog.active) {
+      this.slide(dt, { x: 0, y: 0 }, 4);
+      this.followSimone(time, dt);
+      return;
+    }
+    this.slide(dt, Controls.axis());
+    this.followSimone(time, dt);
+    for (const h of this.hearts) {
+      if (h.got || Math.abs(h.x - this.player.x) > 10 || Math.abs(h.y - this.player.y) > 10) continue;
+      h.got = true;
+      this.heartTotal++;
+      Audio8.sfx('heart');
+      this.hudText.setText(String(this.heartTotal));
+      this.tweens.add({ targets: this.hudHeart, scale: 1.6, duration: 120, yoyo: true });
+      this.tweens.add({ targets: h.img, y: h.img.y - 16, alpha: 0, scale: 2, duration: 400, onComplete: () => h.img.destroy() });
+      this.time.delayedCall(700, () => { if (this.romance && !this.leaving) this.spawnHeart(); });
+    }
+    this.hearts = this.hearts.filter(h => !h.got);
+  }
+
+  // Simone insegue un punto dietro Francesca: accelera meno, frena di più e barcolla
+  followSimone(time, dt) {
+    const s = this.simone, p = this.player;
+    if (this.simoneOut) return;
+    const sp = Math.hypot(this.vx, this.vy);
+    const away = Math.hypot(s.x - p.x, s.y - p.y) || 1;
+    const bx = sp > 10 ? -this.vx / sp : (s.x - p.x) / away;
+    const by = sp > 10 ? -this.vy / sp : (s.y - p.y) / away;
+    const dx = p.x + bx * SIMONE_ICE.gap - s.x;
+    const dy = p.y + by * SIMONE_ICE.gap - s.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 6) {
+      this.svx += dx / d * SIMONE_ICE.acc * dt;
+      this.svy += dy / d * SIMONE_ICE.acc * dt;
+    }
+    const damp = Math.exp(-SIMONE_ICE.drag * dt);
+    this.svx *= damp;
+    this.svy *= damp;
+    const v = Math.hypot(this.svx, this.svy);
+    // quando resta troppo indietro si dà una spinta (ma non la raggiunge mai davvero)
+    const cap = d > 90 ? SIMONE_ICE.catchUp : SIMONE_ICE.maxV;
+    if (v > cap) { this.svx *= cap / v; this.svy *= cap / v; }
+    let nx = s.x + this.svx * dt, ny = s.y + this.svy * dt;
+    // anche lui resta sul ghiaccio (o esce dal varco dietro di lei)
+    const gap = this.exitOpen && ny > EXIT.y0 + 6 && ny < EXIT.y1 - 2 && nx > RINK.x1 - 40;
+    const sd = rinkSD(nx, ny - 2);
+    if (!gap && sd > -ICE.feetR) {
+      const e = 0.5;
+      const gx = rinkSD(nx + e, ny - 2) - rinkSD(nx - e, ny - 2);
+      const gy = rinkSD(nx, ny - 2 + e) - rinkSD(nx, ny - 2 - e);
+      const gl = Math.hypot(gx, gy) || 1;
+      nx -= gx / gl * (sd + ICE.feetR);
+      ny -= gy / gl * (sd + ICE.feetR);
+      const vn = (this.svx * gx + this.svy * gy) / gl;
+      if (vn > 0) { this.svx -= vn * gx / gl; this.svy -= vn * gy / gl; }
+    }
+    s.setPos(nx, ny);
+    // barcolla quando va veloce: si vede che fa fatica
+    const wob = Math.min(1, v / 40);
+    s.sprite.setAngle(Math.sin(time / 120) * 7 * wob);
+    if (v > 6) s.walk(dirFromVector(this.svx, this.svy, s.dir), 0.45);
+    else if (s.sprite.anims.isPlaying) s.face(s.dir);
+    if (this.grumble) this.grumble.setPosition(s.x, s.y - 24);
+    if (!this.leaving && time > this.nextGrumble && d > 30) {
+      this.nextGrumble = time + 7000 + Math.random() * 5000;
+      if (this.grumble) this.grumble.destroy();
+      const b = this.grumble = Art.bubble(this, ['è davvero brava...', 'Ce la posso fare!', 'sono stabile, sono stabile…', 'che carina che è...!', 'che spettacolo <3'][Math.floor(Math.random() * 5)]);
+      b.setPosition(s.x, s.y - 24).setDepth(2000);
+      this.time.delayedCall(2200, () => { b.destroy(); if (this.grumble === b) this.grumble = null; });
+    }
+  }
+
+  // Francesca esce dal varco; Simone arranca dietro, poi fine livello
+  async leaveRink() {
+    if (this.leavingRink) { this.followSimone(time, dt); return; }
+    this.leavingRink = true;
+    this.busy = true;
     this.cameras.main.stopFollow();
-    this.tweens.add({ targets: h, y: h.y - 10, alpha: 0, delay: 600, duration: 800 });
-    p.walk('down', 0.6);
-    this.simone.walk('down', 0.6);
-    this.tweens.add({ targets: [p, this.simone], y: '+=60', duration: 2200, ease: 'Sine.InOut',
-      onUpdate: () => { p.sync(); this.simone.sync(); } });
-    await this.wait(1600);
+    const p = this.player;
+    p.walk('right', 0.7);
+    this.tweens.add({ targets: p, x: RINK.W + 20, duration: 900, onUpdate: () => p.sync() });
+    this.vx = 0;
+    this.vy = 0;
+    await this.wait(700);
+    this.simoneOut = true;
+    const s = this.simone;
+    s.sprite.setAngle(0);
+    await s.walkTo(RINK.x1 - 20, (EXIT.y0 + EXIT.y1) / 2 + 6, 55);
+    await s.walkTo(RINK.W + 20, (EXIT.y0 + EXIT.y1) / 2 + 6, 55);
     this.completeLevel(2);
   }
 }

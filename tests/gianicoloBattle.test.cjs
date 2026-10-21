@@ -48,13 +48,19 @@ for (const [key, profile] of Object.entries(profiles)) {
  // rng 0 sceglie la prima mossa disponibile.
  const s = new State('simone', ()=>0); s.playerMove(2);
  const curse = s.enemyMove(); assert.equal(curse.effect, 'curse'); assert.equal(curse.damage, 0);
- assert.equal(s.weakTurns, 2); assert.equal(s.guardTurns, 2);
- // Pipas: 3 x 0,35 x 0,5 -> minimo 1 a colpo.
- assert.equal(s.playerMove(0).hits.join(), '1,1'); assert.equal(s.weakTurns, 1);
- // Effetto attivo: non ripete Bestemmia, usa Abbraccione MAX (16 x 0,35 per Pretty).
- const hug = s.enemyMove(); assert.equal(hug.name, 'Abbraccione MAX'); assert.equal(hug.damage, 6);
- s.playerMove(0); assert.equal(s.weakTurns, 0); assert.equal(s.guardTurns, 0);
+ // Viaggio: carica fissa, attacco x1,6 e danni subiti x0,5 per due turni suoi.
+ assert.deepEqual({...curse.boost}, {turns: 2, atk: 1.6, def: 0.5});
+ assert.equal(s.playerMove(0).hits.join(), '2,2');
+ // Carica attiva: non ripete Bestemmia, usa Abbraccione MAX (16 x 0,35 Pretty x 1,6).
+ const hug = s.enemyMove(); assert.equal(hug.name, 'Abbraccione MAX'); assert.equal(hug.damage, 9); assert.equal(s.enemyBoost.turns, 1);
+ assert.equal(s.playerMove(0).hits.join(), '2,2'); s.enemyMove(); assert.equal(s.enemyBoost.turns, 0);
+ assert.equal(s.playerMove(0).hits.join(), '3,3');
  assert.equal(s.playerMove(0).skipped, true);
+ // Arduo: carica casuale tra x1,4 e x2 in attacco, danni subiti tra x0,6 e x0,3.
+ const lo = new State('simone', ()=>0, 'francesca', {mode: 'arduo'}); lo.playerMove(2);
+ assert.deepEqual({...lo.enemyMove().boost}, {turns: 2, atk: 1.4, def: 0.6});
+ const hi = new State('simone', ()=>0.999999, 'francesca', {mode: 'arduo'}); hi.enemyBoost = hi.newBoost();
+ assert(Math.abs(hi.enemyBoost.atk - 2) < 1e-4 && Math.abs(hi.enemyBoost.def - 0.3) < 1e-4);
  // Veleno: 5 PS a ogni round, non cumulativo.
  const p = new State('simone', ()=>0.999999); p.playerMove(2);
  const fart = p.enemyMove(); assert.equal(fart.effect, 'poison'); assert.equal(fart.poison, 5); assert.equal(p.playerHP, 95);
@@ -73,10 +79,12 @@ for (const [key, profile] of Object.entries(profiles)) {
  assert.equal(s.moves.map(m=>m.name).join(), 'Abbraccione MAX,Bestemmia Lampo,Scorreggia,Fuggi');
  const hug = s.playerMove(0); assert.equal(hug.damage, 14); assert.equal(s.enemyHP, 48 - 14);
  const plain = s.enemyMove().damage; assert.equal(plain, 12);
- // Bestemmia: attacco nemico -65% e difesa dimezzata per due attacchi nemici.
- const c = s.playerMove(1); assert.equal(c.buff.changed, true); assert.equal(s.enemyWeakTurns, 2);
- assert.equal(s.enemyMove().damage, Math.round(12 * 0.35 * 0.5)); assert.equal(s.enemyWeakTurns, 1);
- s.playerMove(0); s.enemyMove(); assert.equal(s.enemyWeakTurns, 0); assert.equal(s.playerGuardTurns, 0);
+ // Bestemmia: Simone si carica (attacco x1,6, danni subiti dimezzati) per due turni suoi.
+ const c = s.playerMove(1); assert.equal(c.buff.changed, true); assert.equal(s.playerBoost.turns, 2);
+ assert.equal(s.enemyMove().damage, 6);
+ assert.equal(s.playerMove(0).damage, 22); assert.equal(s.playerBoost.turns, 1);
+ assert.equal(s.enemyMove().damage, 6);
+ s.playerMove(1); assert.equal(s.playerBoost.turns, 2); // si può ricaricare
  // Scorreggia: -5% dei PS nemici (min 1) a ogni round, non cumulativo.
  const p = new State('nonna', ()=>0, 'simone'); p.playerMove(2); const r = p.enemyMove();
  assert.equal(r.enemyPoison, 2); assert.equal(p.enemyHP, 46);
@@ -88,8 +96,29 @@ for (const [key, profile] of Object.entries(profiles)) {
  for (const key of [...Object.keys(profiles).filter(k=>k!=='simone'), ...Object.keys(london)]) {
   const w = new State(key, ()=>0, 'simone'); let t = 0;
   w.playerMove(1); w.enemyMove(); w.playerMove(2); w.enemyMove();
-  while (!w.outcome && t++ < 30) { w.playerMove(w.enemyWeakTurns ? 0 : 1); w.enemyMove(); }
+  while (!w.outcome && t++ < 30) { w.playerMove(w.playerBoost.turns ? 0 : 1); w.enemyMove(); }
   assert.equal(w.outcome, 'victory', key);
+ }
+}
+// Arduo: nemici più robusti e cattivi, Pretty Privilege -45%, PS che arrivano dalla lotta prima.
+{
+ const v = new State('nonna', ()=>0), a = new State('nonna', ()=>0, 'francesca', {mode: 'arduo'});
+ assert.equal(v.enemyMaxHP, 48); assert.equal(a.enemyMaxHP, 60);
+ assert.equal(a.moves[2].name, 'Pretty Privilege'); assert.match(a.moves[2].description, /-45%/);
+ assert.match(v.moves[2].description, /-65%/);
+ a.playerMove(0); assert.equal(a.enemyMove().damage, 15);
+ const pr = new State('nonna', ()=>0, 'francesca', {mode: 'arduo'}); pr.playerMove(2); assert.equal(pr.enemyMove().damage, Math.round(15 * 0.55));
+ const hurt = new State('nonna', ()=>0, 'francesca', {mode: 'arduo', playerHP: 37}); assert.equal(hurt.playerHP, 37);
+ assert.equal(new State('nonna', ()=>0, 'simone', {mode: 'arduo', playerHP: 0}).playerHP, 0);
+ // A PS pieni, con un caso medio, la strategia giusta vince ancora contro tutti, per entrambi.
+ for (const key of [...Object.keys(profiles).filter(k=>k!=='simone'), ...Object.keys(london)]) {
+  const w = new State(key, ()=>0.5, 'francesca', {mode: 'arduo'}); w.playerMove(2); w.enemyMove();
+  let t = 0; while (!w.outcome && t++ < 40) { w.playerMove(0); w.enemyMove(); }
+  assert.equal(w.outcome, 'victory', 'francesca ' + key);
+  const z = new State(key, ()=>0.5, 'simone', {mode: 'arduo'}); t = 0;
+  z.playerMove(1); z.enemyMove(); z.playerMove(2); z.enemyMove();
+  while (!z.outcome && t++ < 40) { z.playerMove(z.playerBoost.turns ? 0 : 1); z.enemyMove(); }
+  assert.equal(z.outcome, 'victory', 'simone ' + key);
  }
 }
 // Londra: cittadini e celebrità, con sprite esistenti, combattibili da entrambi.
@@ -103,4 +132,4 @@ for (const [key, profile] of Object.entries(profiles)) {
   assert.equal(win.outcome,'victory');
  }
 }
-console.log('OK: 10 avversari; multi-colpo, potenziamenti, limiti, turni, fuga, vittoria, sconfitta e reset; mosse speciali di Simone; Simone combattente; avversari di Londra.');
+console.log('OK: 10 avversari; multi-colpo, potenziamenti, limiti, turni, fuga, vittoria, sconfitta e reset; mosse speciali di Simone; Simone combattente; modalità Arduo; avversari di Londra.');

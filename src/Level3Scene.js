@@ -965,6 +965,7 @@ class Level3Scene extends BaseScene {
 
     this.addNPCs();
     this.enableChallenges();
+    Mode.hideSnacks(this, this.world, 'BT', 2); // Arduo: spuntini negli alberi e nelle cabine telefoniche
     this.addHUD();
     this.addRain();
     this.exclaim = new ExclaimMarker(this);
@@ -1202,6 +1203,7 @@ class Level3Scene extends BaseScene {
         [null, 'Mr Bean non dice una parola. Ti mostra il suo orsacchiotto, Teddy.'],
         [null, 'Poi guarda Simone dall\'alto in basso e nasconde Teddy dietro la schiena.'],
         ['Simone', 'Perché mi fissa così?'],
+        ['Simone', 'Fa così solo perché sono napoletano.'],
       ]), 'mrBean'],
       [celeb('sherlock', 57, 'down', [
         ['Sherlock', 'Interessante. Scarpe consumate, polpacci in fiamme, e un uomo che la segue a un passo esatto di distanza.'],
@@ -1224,9 +1226,13 @@ class Level3Scene extends BaseScene {
         ['Christian De Sica', 'Tienitelo stretto \'sto ragazzo: uno che te segue sotto la pioggia nun se trova a ogni angolo.'],
       ]), 'deSica'],
       [celeb('hughGrant', 97, 'right', [
-        ['Hugh Grant', 'Oh, ehm, scusate, terribilmente… sapete per caso da che parte è Notting Hill? Ho una libreria da aprire.'],
-        ['Simone', 'Ehm… sorry, siamo di Roma.'],
-        ['Hugh Grant', 'Ah. Splendido. Anch\'io mi perdo sempre. È una cosa molto inglese.'],
+        ['Hugh Grant', 'Oh, ehm, sorry, terribly sorry… I couldn\'t help noticing… you have the most wonderful smile.'],
+        ['Hugh Grant', 'Would you perhaps, ehm, fancy a cup of tea? I have a little bookshop in Notting Hill. Very charming.'],
+        [null, 'Hugh Grant si accorge di Simone, piantato al fianco di Francesca.'],
+        ['Simone', 'Ehm… she is with me. Me. Io.'],
+        ['Hugh Grant', 'Oh. Oh dear. Right, of course. Silly me. You already have a handsome young man by your side.'],
+        ['Hugh Grant', 'Lucky chap. Terribly lucky. Carry on, carry on.'],
+        ['Simone', 'Picci, Hugh Grant mi ha appena dato del bello. Me lo segno.'],
       ]), 'hughGrant'],
       [celeb('julia', 98, 'left', [
         ['Julia Roberts', 'Sono solo una ragazza… che sta davanti a un ragazzo… e gli chiede di amarla.'],
@@ -1277,7 +1283,7 @@ class Level3Scene extends BaseScene {
       const original = this.world.interact.get(key);
       this.challengeNPCs.push(npc);
       this.world.setInteract(npc.c, npc.r, () => GianicoloBattle.offer(this, npc, original,
-        { opponent, returnSong: SONGS.london, background: 'londonBattleBg' }));
+        { opponent, partner: true, returnSong: SONGS.london, background: 'londonBattleBg' }));
     }
   }
 
@@ -1571,8 +1577,8 @@ class Level3Scene extends BaseScene {
     if (this.stage === 1 && !this.stepDone && r <= 10 && c >= 85 && c <= 89) this.giveUpScene();
     if (this.stage === 2 && !this.finalDone && r <= 10 && c >= 163) this.finalApproach();
     if (!this.pigeonsGone && Math.abs(c - 113) <= 4 && r >= 7 && r <= 10) this.scarePigeons();
-    const mult = this.tired ? 34 + Math.random() * 12 : 22 + Math.random() * 9;
-    this.steps = Math.min(39000, this.steps + mult);
+    // ogni casella sono 8 passi veri; il grosso lo fanno i salti sulla mappa tra una tappa e l'altra
+    this.steps = Math.min(39000, this.steps + 8);
     this.updateSteps();
 
     // stanchezza nell'ultimo tratto prima degli zii

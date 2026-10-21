@@ -2,6 +2,7 @@
 // Si apre con Esc o con il tasto menu in alto (accanto alla nota); il livello sotto resta fermo finché non si riprende.
 
 const PAUSABLE = ['Level1', 'Level2', 'Level3', 'LondonNight', 'LevelComplete', 'Finale'];
+const PARTNER_SCENES = ['Level3', 'LondonNight']; // dove Simone viaggia (e combatte) con Francesca
 const PAUSE_COL = { text: 0xf3ead2, sel: 0xffe6a0, dim: 0x8a8fa8, gold: 0xd8b46a };
 
 const Pause = {
@@ -97,15 +98,21 @@ class PauseScene extends Phaser.Scene {
     const where = lv ? `Livello ${lv.num} – ${lv.name}` : { LondonNight: 'Londra – quella sera', LevelComplete: 'Tra un livello e l\'altro', Finale: 'Il finale' }[this.from] || '';
     right.push(addText(this, 332, 52, where, { color: PAUSE_COL.sel, origin: [0.5, 0] }));
     right.push(this.add.image(332, 66, 'pauseRule'));
+    // In Arduo i PS restano tra una lotta e l'altra: li mostriamo sotto i nomi
+    const hard = Mode.hard;
+    this.psText = {};
     [['francesca', 'Francesca', 290], ['simone', 'Simone', 374]].forEach(([key, name, x]) => {
-      const spr = this.add.sprite(x, 150, key, 0).setOrigin(0.5, 1).setScale(3);
+      const spr = this.add.sprite(x, hard ? 142 : 150, key, 0).setOrigin(0.5, 1).setScale(3);
       spr.play(`${key}-walk-down`);
-      right.push(spr, addText(this, x, 158, name, { color: PAUSE_COL.text, origin: [0.5, 0] }));
+      right.push(spr, addText(this, x, hard ? 148 : 158, name, { color: PAUSE_COL.text, origin: [0.5, 0] }));
+      if (hard) right.push(this.psText[key] = addText(this, x, 162, '', { color: PAUSE_COL.sel, origin: [0.5, 0] }));
     });
-    // Pannello in basso: suggerimento comandi
-    const hint = Controls.isTouch ? 'A  conferma      tasto menu  chiudi' : 'Invio  conferma      Esc  indietro';
-    right.push(this.add.image(28, 200, 'pausePanelB').setOrigin(0, 0),
-      addText(this, 240, 209, hint, { color: PAUSE_COL.dim, origin: [0.5, 0] }));
+    if (hard) right.push(addText(this, 332, 176, 'Modalità Arduo', { color: PAUSE_COL.dim, origin: [0.5, 0] }));
+    this.updatePS();
+    // Pannello in basso: suggerimento comandi (e messaggi dello zaino)
+    this.hintLine = Controls.isTouch ? 'A  conferma      tasto menu  chiudi' : 'Invio  conferma      Esc  indietro';
+    this.hint = addText(this, 240, 209, this.hintLine, { color: PAUSE_COL.dim, origin: [0.5, 0] });
+    right.push(this.add.image(28, 200, 'pausePanelB').setOrigin(0, 0), this.hint);
     this.root.add(right);
 
     // Pannello a sinistra: le voci del menu
@@ -152,39 +159,87 @@ class PauseScene extends Phaser.Scene {
     this.entries[this.sel][1]();
   }
 
+  updatePS() {
+    for (const [key, t] of Object.entries(this.psText)) {
+      const hp = Mode.hp(key);
+      t.setText(`PS ${hp}/100`).setTint(hp <= 0 ? 0xe86a6a : hp < 40 ? 0xf0b060 : PAUSE_COL.sel);
+    }
+  }
+
+  // Un messaggio al posto del suggerimento comandi, per qualche secondo
+  flash(msg) {
+    this.hint.setText(msg).setTint(PAUSE_COL.sel);
+    if (this.flashTimer) this.flashTimer.remove();
+    this.flashTimer = this.time.delayedCall(2200, () => this.hint.setText(this.hintLine).setTint(PAUSE_COL.dim));
+  }
+
+  // sel: indice o nome della voce da selezionare (le voci cambiano con modalità e musica)
   showMain(sel = 0) {
     this.backAction = () => this.close();
     const entries = [
-      ['Riprendi', () => this.close()],
-      ['Scegli livello', () => this.showLevels()],
+      ['Riprendi', () => this.close(), 'resume'],
     ];
+    if (Mode.hard) entries.push([`Zaino (${Mode.total()})`, () => this.showBag(), 'bag']);
+    entries.push(['Scegli livello', () => this.showLevels(), 'levels']);
     if (Audio8.hasFiles()) {
       entries.push([`Musica: ${Audio8.useFiles ? 'le nostre canzoni' : 'del gioco'}`, () => {
         Audio8.setUseFiles(!Audio8.useFiles);
-        this.showMain(2);
-      }]);
+        this.showMain('music');
+      }, 'music']);
     }
     entries.push([`Schermo TV: ${Crt.on ? 'acceso' : 'spento'}`, () => {
       Crt.set(!Crt.on);
-      this.showMain(entries.length - 1);
+      this.showMain('tv');
+    }, 'tv']);
+    entries.push(['Menu principale', () => this.showConfirm(), 'title']);
+    const at = typeof sel === 'string' ? Math.max(0, entries.findIndex(e => e[2] === sel)) : sel;
+    this.setMenu('Pausa', entries, at);
+  }
+
+  // Zaino (solo Arduo): scegli lo spuntino, poi chi lo mangia
+  showBag(sel = 0) {
+    this.backAction = () => this.showMain('bag');
+    const entries = SNACK_KEYS.map(k => [`${SNACKS[k].name} x${Mode.count(k)}`, () => {
+      if (!Mode.count(k)) { this.flash('Questo spuntino è finito.'); return; }
+      this.showEat(k, SNACK_KEYS.indexOf(k));
     }]);
-    entries.push(['Menu principale', () => this.showConfirm()]);
-    this.setMenu('Pausa', entries, sel);
+    entries.push(['Indietro', () => this.showMain('bag')]);
+    this.setMenu('Zaino', entries, sel);
+    this.items.forEach((t, i) => { if (i < SNACK_KEYS.length && !Mode.count(SNACK_KEYS[i])) t.setAlpha(0.5); });
+  }
+
+  showEat(item, from) {
+    const heal = Math.round(SNACKS[item].heal * 100);
+    this.flash(`${SNACKS[item].name}: recupera il ${heal}% dei PS`);
+    this.backAction = () => this.showBag(from);
+    // Simone si può rifocillare solo dove è in viaggio con Francesca (Londra)
+    const who = [['francesca', 'Francesca']];
+    if (PARTNER_SCENES.includes(this.from)) who.push(['simone', 'Simone']);
+    this.setMenu('A chi lo dai?', [
+      ...who.map(([key, name]) => [`${name}  PS ${Mode.hp(key)}`, () => {
+        const got = Mode.use(item, key);
+        if (!got) { this.flash(`${name} è già in piena forma!`); return; }
+        Audio8.sfx('item');
+        this.updatePS();
+        this.flash(`${name} mangia: +${got} PS. Gnam!`);
+        this.showBag(from);
+      }]),
+      ['Indietro', () => this.showBag(from)],
+    ]);
   }
 
   showLevels() {
-    this.backAction = () => this.showMain(1);
+    this.backAction = () => this.showMain('levels');
     this.setMenu('Scegli livello', [
       ...LEVELS.map(l => [`${l.num}. ${l.name}`, () => this.leave(l.key)]),
-      ['Indietro', () => this.showMain(1)],
+      ['Indietro', () => this.showMain('levels')],
     ]);
   }
 
   showConfirm() {
-    const i = this.entries.length - 1;
-    this.backAction = () => this.showMain(i);
+    this.backAction = () => this.showMain('title');
     this.setMenu('Tornare al menu?', [
-      ['No, resto qui', () => this.showMain(i)],
+      ['No, resto qui', () => this.showMain('title')],
       ['Sì, al menu', () => this.leave('Title')],
     ]);
   }
