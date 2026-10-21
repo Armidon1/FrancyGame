@@ -10,6 +10,12 @@ const RINK = {
   simone: { x: 240, y: 86 },
 };
 
+// Cuoricini da raccogliere prima che Simone riesca a rialzarsi, ognuno con la sua dose d'amore
+const HEART_SPOTS = [[100, 505], [330, 548], [380, 455], [150, 410], [292, 300], [128, 300], [96, 214], [310, 196], [190, 128], [392, 118]];
+const HEART_GIFTS = ['un abbraccio', 'una risata', 'un bacino', 'una carezza', 'un "piccina"',
+  'una coccola', 'un tè caldo', 'un sorriso', 'un "ti amo"', 'tutto il mio amore'];
+const HEARTS_NEEDED = HEART_SPOTS.length;
+
 // Il varco per uscire, sulla balaustra di destra (si apre solo alla fine)
 const EXIT = { y0: 300, y1: 356 };
 
@@ -262,7 +268,10 @@ class Level2Scene extends BaseScene {
       delay: 2400, loop: true, callback: () => {
         bubbleState = (bubbleState + 1) % 4;
         this.simoneBubble.destroy();
-        this.simoneBubble = Art.bubble(this, ['aiuto…', 'tutto ok, tutto ok!', 'aiuto…', '♪ amore disperatooo ♪'][bubbleState]);
+        const lines = this.heartCount >= HEARTS_NEEDED / 2
+          ? ['sento già le gambe!', 'forza Picci!', 'quasi, quasi…', '♪ amore disperatooo ♪']
+          : ['aiuto…', 'tutto ok, tutto ok!', 'aiuto…', '♪ amore disperatooo ♪'];
+        this.simoneBubble = Art.bubble(this, lines[bubbleState]);
         this.simoneBubble.setPosition(RINK.simone.x, RINK.simone.y - 24);
       },
     });
@@ -375,7 +384,7 @@ class Level2Scene extends BaseScene {
 
   addHearts() {
     this.hearts = [];
-    [[100, 505], [380, 455], [292, 300], [96, 214], [392, 118]].forEach(([x, y]) => {
+    HEART_SPOTS.forEach(([x, y]) => {
       const h = this.add.image(x, y - 8, 'heart').setDepth(9);
       this.tweens.add({ targets: h, y: y - 11, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
       this.hearts.push({ img: h, x, y, got: false });
@@ -383,10 +392,16 @@ class Level2Scene extends BaseScene {
     this.heartCount = 0;
   }
 
+  // Scritta che sale dal cuoricino appena preso
+  heartGift(h, gift) {
+    const t = addText(this, h.x, h.y - 18, `+ ${gift}`, { color: 0xc0186a, shadow: 0xfbf3e4, origin: [0.5, 1], depth: 1100 });
+    this.tweens.add({ targets: t, y: t.y - 18, alpha: 0, delay: 700, duration: 900, ease: 'Sine.In', onComplete: () => t.destroy() });
+  }
+
   addHUD() {
     const bg = this.add.rectangle(4, 4, 50, 15, 0x1a1020, 0.55).setOrigin(0, 0).setScrollFactor(0).setDepth(950);
     this.hudHeart = this.add.image(13, 11, 'heart').setScrollFactor(0).setDepth(951);
-    this.hudText = addText(this, 21, 7, '0/5', { color: 0xfbf3e4, fixed: true, depth: 951 });
+    this.hudText = addText(this, 21, 7, `0/${HEARTS_NEEDED}`, { color: 0xfbf3e4, fixed: true, depth: 951 });
     this.hud = [bg, this.hudHeart, this.hudText];
   }
 
@@ -395,7 +410,7 @@ class Level2Scene extends BaseScene {
     await this.levelCard(2, 'La pista di pattinaggio');
     await this.talk([
       [null, 'Oh no! Simone è cascato dall\'altra parte della pista! Vallo a recuperare!'],
-      [null, 'Per rialzarsi gli serve tutto il tuo amore: raccogli i 5 cuoricini sul ghiaccio prima di arrivare da lui.'],
+      [null, `Per rialzarsi gli serve tutto il tuo amore: raccogli tutti i ${HEARTS_NEEDED} cuoricini sul ghiaccio prima di arrivare da lui.`],
     ]);
     await this.tweenP({ targets: this.cameras.main, scrollY: RINK.H - 270, duration: 1800, ease: 'Sine.InOut' });
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 10);
@@ -449,10 +464,11 @@ class Level2Scene extends BaseScene {
         h.got = true;
         this.heartCount++;
         Audio8.sfx('heart');
-        this.hudText.setText(`${this.heartCount}/5`);
+        this.hudText.setText(`${this.heartCount}/${HEARTS_NEEDED}`);
+        this.heartGift(h, HEART_GIFTS[this.heartCount - 1]);
         this.tweens.add({ targets: this.hudHeart, scale: 1.6, duration: 120, yoyo: true });
         this.tweens.add({ targets: h.img, y: h.img.y - 16, alpha: 0, scale: 2, duration: 400, onComplete: () => h.img.destroy() });
-        if (this.heartCount === 5) this.toast('Tutti i cuoricini! Adesso Simone ce la fa a rialzarsi.', 3000);
+        if (this.heartCount === HEARTS_NEEDED) this.toast('Tutti i cuoricini! Adesso Simone ce la fa a rialzarsi.', 3000);
       }
     }
 
@@ -589,13 +605,13 @@ class Level2Scene extends BaseScene {
   async rescue() {
     if (this.busy) return;
     const p = this.player;
-    if (this.heartCount < 5) {
+    if (this.heartCount < HEARTS_NEEDED) {
       if (this.nagged) return;
       this.nagged = true;
       this.busy = true;
       this.vx = 0;
       this.vy = 0;
-      const missing = 5 - this.heartCount;
+      const missing = HEARTS_NEEDED - this.heartCount;
       await this.talk([
         ['Simone', 'Piccina! Sei venuta! Però… da solo non ce la faccio a rialzarmi.'],
         ['Simone', missing === 1
@@ -802,7 +818,7 @@ class Level2Scene extends BaseScene {
     if (!this.leaving && time > this.nextGrumble && d > 30) {
       this.nextGrumble = time + 7000 + Math.random() * 5000;
       if (this.grumble) this.grumble.destroy();
-      const b = this.grumble = Art.bubble(this, ['è davvero brava...', 'Ce la posso fare!', 'sono stabile, sono stabile…', 'che carina che è...!', 'che spettacolo <3'][Math.floor(Math.random() * 5)]);
+      const b = this.grumble = Art.bubble(this, ['è davvero brava...', 'Ce la posso fare!', 'sono stabile, sono stabile…', 'che carina che è...!', 'che spettacolo...'][Math.floor(Math.random() * 5)]);
       b.setPosition(s.x, s.y - 24).setDepth(2000);
       this.time.delayedCall(2200, () => { b.destroy(); if (this.grumble === b) this.grumble = null; });
     }
