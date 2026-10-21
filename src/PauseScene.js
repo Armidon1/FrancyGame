@@ -164,6 +164,10 @@ class PauseScene extends Phaser.Scene {
         this.showMain(2);
       }]);
     }
+    entries.push([`Schermo TV: ${Crt.on ? 'acceso' : 'spento'}`, () => {
+      Crt.set(!Crt.on);
+      this.showMain(entries.length - 1);
+    }]);
     entries.push(['Menu principale', () => this.showConfirm()]);
     this.setMenu('Pausa', entries, sel);
   }
@@ -177,7 +181,7 @@ class PauseScene extends Phaser.Scene {
   }
 
   showConfirm() {
-    const i = Audio8.hasFiles() ? 3 : 2;
+    const i = this.entries.length - 1;
     this.backAction = () => this.showMain(i);
     this.setMenu('Tornare al menu?', [
       ['No, resto qui', () => this.showMain(i)],

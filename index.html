@@ -21,6 +21,17 @@
     #game canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
     canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; width: 100%; height: 100%; display: block; }
 
+    /* Schermo a tubo catodico (Crt in src/crt.js) */
+    #crt { display: none; position: fixed; pointer-events: none; z-index: 4;
+      background:
+        radial-gradient(ellipse at center, rgba(0,0,0,0) 62%, rgba(0,0,0,0.42) 100%),
+        linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.26) 100%) 0 0 / 100% var(--row, 3px),
+        linear-gradient(to right, rgba(255,60,60,0.05), rgba(60,255,60,0.05) 33%, rgba(60,60,255,0.05) 66%) 0 0 / var(--row, 3px) 100%;
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.55);
+    }
+    body.crt #crt { display: block; }
+    body.crt #game canvas { filter: blur(var(--crt-blur, 0.6px)) saturate(1.18) contrast(1.06) brightness(1.1); }
+
     #touch { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
     #touch .pad, #touch .abtn { position: absolute; pointer-events: auto; opacity: 0.5; touch-action: none; }
     #touch .pad {
@@ -80,6 +91,7 @@
 <body>
   <div id="wrap">
     <div id="game"></div>
+    <div id="crt"></div>
     <div id="touch"></div>
     <button id="mute" aria-label="Audio"></button>
     <button id="pausebtn" aria-label="Menu">☰</button>
@@ -112,6 +124,7 @@
   <script src="src/LondonNightScene.js"></script>
   <script src="src/FinaleScene.js"></script>
   <script src="src/PauseScene.js"></script>
+  <script src="src/crt.js"></script>
   <script src="src/main.js"></script>
 </body>
 </html>

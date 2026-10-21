@@ -33,6 +33,8 @@ const LONDON_OPPONENTS = Object.freeze(Object.fromEntries([
   ['hughGrant', 'hughGrant', 'Hugh Grant', 48, [['Balbettio adorabile', 10, 'Si scusa tre volte prima di colpire.'], ['Ciuffo anni \'90', 13, 'Un colpo di capelli perfetto.']]],
   ['harryPotter', 'harryPotter', 'Harry Potter', 48, [['Expelliarmus!', 11, 'Ti vola via il telefono.'], ['Gufo postino', 13, 'Ti consegna una lettera. In faccia.']]],
   ['beckham', 'beckham', 'David Beckham', 54, [['Tiro a giro', 12, 'Curva come una banana. Gol.'], ['Punizione all\'incrocio', 15, 'Il portiere non si è nemmeno mosso.']]],
+  ['commessa', 'commessa', 'La commessa di Harrods', 50, [['Carta fedeltà', 11, 'Ti iscrive a tre programmi punti in un colpo solo.'], ['Pioggia di orsetti', 13, 'Ti travolge con una valanga di peluche. Morbidissima.']]],
+  ['barista', 'barista', 'La barista', 49, [['Scontrino', 14, 'Six pounds, please. Il colpo più duro di Londra.'], ['Schiuma di latte', 11, 'Un cuoricino nella schiuma. Ti distrae e colpisce.']]],
 ].map(([key, sprite, name, hp, moves]) => [key, Object.freeze({ key, sprite, name, hp, moves: Object.freeze(moves.map(([name, damage, text]) => Object.freeze({ name, damage, text, effect: null }))) })])));
 
 function battleOpponent(key) {

@@ -762,6 +762,11 @@ class Level1Scene extends BaseScene {
   async talkSimone() {
     this.simone.ch.face(OPPOSITE[this.player.dir]);
     await this.say('Simone', 'Ehi… ti va una sfida a ninja?');
+    const yes = await GianicoloBattle.choose(this, 'Una sfida a ninja?', ['Sì, bel maschione profumato', 'Non ancora, favoloso e virile macho']);
+    if (yes !== 0) {
+      await this.say('Simone', 'Va bene… ti aspetto qui. Bello, profumato e virile.');
+      return;
+    }
     this.ninjaGame();
   }
 

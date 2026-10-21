@@ -91,8 +91,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   assert.equal(await page.evaluate(()=>game.scene.getScene('Level1').heartCount),1);
   await page.evaluate(()=>game.scene.getScene('Level1').moveTourists());await sleep(1000);
   assert.equal(await page.evaluate(()=>{const s=game.scene.getScene('Level1');return typeof s.world.interact.get('12,12')}),'function');
-  // Simone: Parla avvia ancora ninja; non sbloccare il movimento durante la scena.
+  // Simone: Parla, poi "Sì", avvia ancora ninja; non sbloccare il movimento durante la scena.
   await page.evaluate(()=>{const s=game.scene.getScene('Level1');s.mover.teleport(15,9,'up');s.world.interact.get('15,8')()});await pick(0);
+  // poi Francesca risponde alla domanda di Simone: "Sì, bel maschione profumato"
+  await sleep(200);await until(()=>!!game.scene.getScene('Level1').npcMenuTick);await pick(0);
   await until(()=>!!game.scene.getScene('Level1').mini);assert.equal(await page.evaluate(()=>game.scene.getScene('Level1').busy),true);
   console.log('OK: panchina, turisti e avvio ninja');
   // Mobile: scelta con tap, conferma, fuga e cleanup durante un cambio livello.

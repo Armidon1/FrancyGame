@@ -7,8 +7,8 @@
 // P cancellata  q ponte (marciapiede)  x ponte (strada)  f ringhiera
 // Interni: # buio  Z muro  F pavimento  C tappeto  S scaffale  A bancone  o divano  h camino  y tavolino  e uscita
 const L3_MAP = [
-  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~wwwwwwwwww~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 0
-  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~wwwwwwwwww~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 1
+  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 0
+  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 1
   'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHgTgggggggggTggggTgggggHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHwwwwwwwwwwHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', // 2
   'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHggggTgwwwwwwwwwgggggggHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHwwwwwwwwwwHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', // 3
   'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHggggggwwwwwwwwwggggTggHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHwwwwwwwwwwHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', // 4
@@ -541,8 +541,31 @@ function buildLondonArt(scene) {
   // Tamigi: argini e parapetti del ponte
   {
     const x0 = 118 * TILE, x1 = 128 * TILE;
-    Pix.rect(ctx, x0, 0, 3, 7 * TILE, '#b8a888');
-    Pix.rect(ctx, x1 - 3, 0, 3, 7 * TILE, '#b8a888');
+    // la riva di là, lontana: il London Eye e una fila di palazzi nella foschia
+    const ex = x0 + 104, ey = 20;
+    for (let a = 0; a < 16; a++) {
+      const t = a / 16 * Math.PI * 2;
+      for (let k = 2; k < 16; k += 2) Pix.px(ctx, Math.round(ex + Math.cos(t) * k), Math.round(ey + Math.sin(t) * k), '#b8bcc8');
+    }
+    for (let a = 0; a < 96; a++) {
+      const t = a / 96 * Math.PI * 2;
+      Pix.px(ctx, Math.round(ex + Math.cos(t) * 16), Math.round(ey + Math.sin(t) * 16), '#e8eaf0');
+      if (a % 8 === 0) Pix.rect(ctx, Math.round(ex + Math.cos(t) * 16) - 1, Math.round(ey + Math.sin(t) * 16) - 1, 2, 2, '#7a8098');
+    }
+    Pix.rect(ctx, ex - 1, ey - 1, 3, 3, '#7a8098');
+    for (let k = 0; k < 14; k++) { Pix.px(ctx, ex - 1 - Math.floor(k / 2), ey + 2 + k, '#9aa0b4'); Pix.px(ctx, ex + 1 + Math.floor(k / 2), ey + 2 + k, '#9aa0b4'); }
+    const roofs = [6, 10, 7, 12, 5, 9, 8, 11, 6, 9, 7, 10, 5, 8, 12, 6, 9, 7, 10, 6];
+    roofs.forEach((h, i) => {
+      const bx = x0 + i * 8;
+      Pix.rect(ctx, bx, 38 - h, 8, h, i % 2 ? '#8a90a6' : '#7e849a');
+      for (let wy = 38 - h + 2; wy < 36; wy += 3) Pix.px(ctx, bx + 2 + (i * 3 + wy) % 4, wy, '#c8ccd8');
+    });
+    // argine di là
+    Pix.rect(ctx, x0, 38, x1 - x0, 4, '#b8a888');
+    Pix.rect(ctx, x0, 41, x1 - x0, 1, '#8a7c64');
+    Pix.rect(ctx, x0, 42, x1 - x0, 2, '#3e5a76');
+    Pix.rect(ctx, x0, 42, 3, 7 * TILE - 42, '#b8a888');
+    Pix.rect(ctx, x1 - 3, 42, 3, 7 * TILE - 42, '#b8a888');
     Pix.rect(ctx, x0, 15 * TILE, 3, 4 * TILE, '#b8a888');
     Pix.rect(ctx, x1 - 3, 15 * TILE, 3, 4 * TILE, '#b8a888');
     for (const py of [7 * TILE - 2, 15 * TILE - 2]) {
@@ -1241,7 +1264,7 @@ class Level3Scene extends BaseScene {
     W.setInteract(31, 25, ziiTalk);
   }
 
-  // I cittadini di Londra si possono sfidare (non chi serve alla storia: commessa, barista, zii).
+  // I cittadini di Londra si possono sfidare (anche commessa e barista: "Parla" porta avanti la storia; gli zii no).
   enableChallenges() {
     this.challengeSession = {};
     this.battle = null;
@@ -1249,7 +1272,7 @@ class Level3Scene extends BaseScene {
     if (!this.textures.exists('londonBattleBg')) buildLondonBattleBg(this);
     this.challengeNPCs = [];
     for (const [npc, opponent] of [[this.londoner, 'londoner'], [this.guard1, 'guardia'], [this.guard2, 'guardia'],
-      [this.turista, 'londonTurista'], [this.signora, 'londonSignora'], ...this.celebs.map(([npc, key]) => [npc, key])]) {
+      [this.turista, 'londonTurista'], [this.signora, 'londonSignora'], [this.commessa, 'commessa'], [this.barista, 'barista'], ...this.celebs.map(([npc, key]) => [npc, key])]) {
       const key = this.world.key(npc.c, npc.r);
       const original = this.world.interact.get(key);
       this.challengeNPCs.push(npc);
@@ -1431,9 +1454,22 @@ class Level3Scene extends BaseScene {
     const keys = ['fanA', 'fanB', 'fanC', 'fanD', 'londoner', 'turistaA', 'kidB', 'kidC'];
     const key = keys[Math.floor(Math.random() * keys.length)];
     const x = right ? cam.scrollX - 20 : cam.scrollX + 500;
+    // il Tamigi non si attraversa a nuoto: chi ci arriva sale le scalette verso il ponte e sparisce
+    const bankL = 118 * TILE - 6, bankR = 128 * TILE + 6;
+    if (x > bankL && x < bankR) return;
+    let end = x + (right ? 560 : -560);
+    const stopped = right ? (x < bankL && end > bankL) : (x > bankR && end < bankR);
+    if (stopped) end = right ? bankL : bankR;
     const ch = new Character(this, key, x, 17 * TILE + 13, right ? 'right' : 'left');
     ch.walk(right ? 'right' : 'left', 0.8);
-    this.tweens.add({ targets: ch, x: x + (right ? 560 : -560), duration: 560 / 34 * 1000, onUpdate: () => ch.sync(), onComplete: () => ch.destroy() });
+    this.tweens.add({
+      targets: ch, x: end, duration: Math.abs(end - x) / 34 * 1000, onUpdate: () => ch.sync(),
+      onComplete: () => {
+        if (!stopped) { ch.destroy(); return; }
+        ch.walk('up', 0.8);
+        this.tweens.add({ targets: ch, y: ch.y - 18, duration: 600, onUpdate: () => { ch.sync(); const al = 1 - (17 * TILE + 13 - ch.y) / 18; ch.sprite.setAlpha(al); ch.shadow.setAlpha(al); }, onComplete: () => ch.destroy() });
+      },
+    });
   }
 
   goalPos() {
@@ -1588,9 +1624,17 @@ class Level3Scene extends BaseScene {
     ]);
     s.face(dirFromVector(g.x - s.x, g.y - s.y, 'up'));
     await this.wait(500);
-    Audio8.noise(0.7, { freq: 140, sweep: 70, vol: 0.5, filter: 'lowpass' });
-    Audio8.tone(90, 0.6, { type: 'sawtooth', vol: 0.06, slide: 60 });
-    this.cameras.main.shake(300, 0.004);
+    Audio8.fart(1.1);
+    this.cameras.main.shake(900, 0.01);
+    // nuvoletta verde che esce da Simone e si allarga verso la guardia
+    for (let i = 0; i < 9; i++) {
+      const puff = this.add.circle(s.x + (Math.random() * 8 - 4), s.y - 6, 3 + Math.random() * 2, i % 2 ? 0x9ac040 : 0xb8d860, 0.8).setDepth(2000);
+      this.tweens.add({
+        targets: puff, delay: i * 90, duration: 1400,
+        x: puff.x + (g.x - s.x) * 0.5 + (Math.random() * 24 - 12), y: puff.y - 10 - Math.random() * 16,
+        scale: 3 + Math.random() * 2, alpha: 0, ease: 'Sine.easeOut', onComplete: () => puff.destroy(),
+      });
+    }
     await this.sayBubble(s, 'PRRRRRT', 1300);
     await this.talk([
       [null, 'La guardia non muove un muscolo. Neanche le narici.'],

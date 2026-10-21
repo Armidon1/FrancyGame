@@ -111,6 +111,49 @@ const Audio8 = {
     s.stop(t + dur);
   },
 
+  // Puzzetta: un ronzio basso che "sbatte" (modulato a scatti), con la musica che si fa da parte
+  fart(dur = 1.1) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(110, t);
+    o.frequency.linearRampToValueAtTime(82, t + dur * 0.5);
+    o.frequency.linearRampToValueAtTime(64, t + dur);
+    const wob = this.ctx.createOscillator();
+    const wobG = this.ctx.createGain();
+    wob.frequency.value = 7; wobG.gain.value = 9;
+    wob.connect(wobG); wobG.connect(o.frequency);
+    // il "brrr": il volume si apre e si chiude ~30 volte al secondo
+    const flap = this.ctx.createOscillator();
+    const flapG = this.ctx.createGain();
+    flap.type = 'square';
+    flap.frequency.setValueAtTime(34, t);
+    flap.frequency.linearRampToValueAtTime(18, t + dur);
+    flapG.gain.value = 0.5;
+    const am = this.ctx.createGain();
+    am.gain.value = 0.5;
+    flap.connect(flapG); flapG.connect(am.gain);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 4;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.55, t + 0.03);
+    g.gain.setValueAtTime(0.55, t + dur * 0.75);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(am); am.connect(lp); lp.connect(g); g.connect(this.master);
+    for (const n of [o, wob, flap]) { n.start(t); n.stop(t + dur + 0.05); }
+    this.noise(dur * 0.8, { freq: 300, sweep: 120, vol: 0.18, filter: 'lowpass' });
+    if (this.musicGain) {
+      const mg = this.musicGain.gain, v = mg.value;
+      mg.cancelScheduledValues(t);
+      mg.setValueAtTime(v, t);
+      mg.linearRampToValueAtTime(v * 0.15, t + 0.05);
+      mg.setValueAtTime(v * 0.15, t + dur + 0.4);
+      mg.linearRampToValueAtTime(v, t + dur + 1.2);
+    }
+  },
+
   sfx(name) {
     if (!this.ctx) return;
     const N = NOTE_FREQ;

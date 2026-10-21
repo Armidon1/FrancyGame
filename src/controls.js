@@ -1,10 +1,13 @@
-// Controlli unificati: tastiera (frecce/WASD + Spazio/Invio) e touch (croce + tasto A in HTML sopra il gioco).
+// Controlli unificati: tastiera (frecce/WASD + Spazio/Invio), controller e touch (croce + tasto A in HTML sopra il gioco).
 
 const Controls = {
   keys: new Set(),
   keyOrder: [], // ultima direzione premuta ha la precedenza
   touchDir: null,
   touchVec: { x: 0, y: 0 },
+  padDir: null, // controller: croce o levetta sinistra
+  padVec: { x: 0, y: 0 },
+  padPrev: [],
   aQueued: false,
   aHeld: false,
   enabled: true,
@@ -38,6 +41,52 @@ const Controls = {
     this.isTouch = params.get('touch') === '1' ||
       (params.get('touch') !== '0' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0));
     this.buildTouchUI();
+    const poll = () => { this.pollGamepads(); requestAnimationFrame(poll); };
+    requestAnimationFrame(poll);
+  },
+
+  // Controller (mappatura standard): croce/levetta per muoversi, A o X conferma,
+  // B indietro nei menu (altrove vale come A), Start o Select apre la pausa
+  pollGamepads() {
+    const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : [];
+    if (!pads.length) { if (this.padDir) this.setPadDir(null, 0, 0); return; }
+    let x = 0, y = 0;
+    const down = [];
+    for (const gp of pads) {
+      const b = (i) => !!(gp.buttons[i] && gp.buttons[i].pressed);
+      if (b(14)) x = -1; if (b(15)) x = 1;
+      if (b(12)) y = -1; if (b(13)) y = 1;
+      const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+      if (!x && !y && Math.hypot(ax, ay) > 0.5) {
+        const oct = Math.round(Math.atan2(ay, ax) / (Math.PI / 4));
+        x = Math.round(Math.cos(oct * Math.PI / 4));
+        y = Math.round(Math.sin(oct * Math.PI / 4));
+      }
+      gp.buttons.forEach((btn, i) => { if (btn.pressed) down[i] = true; });
+    }
+    const d = !x && !y ? null : Math.abs(x) >= Math.abs(y) && x ? (x > 0 ? 'right' : 'left') : (y > 0 ? 'down' : 'up');
+    if (d !== this.padDir || x !== this.padVec.x || y !== this.padVec.y) this.setPadDir(d, x, y);
+    const pressed = (i) => down[i] && !this.padPrev[i];
+    if (down.some(Boolean)) { Audio8.unlock(); this.usePadUI(); }
+    const pause = typeof game !== 'undefined' && game.scene && game.scene.getScene('Pause');
+    const paused = pause && pause.scene.isActive();
+    if (pressed(9) || pressed(8)) Pause.open();
+    else if (pressed(1) && paused) pause.back();
+    else if (pressed(0) || pressed(2) || pressed(1)) this.pressA();
+    this.padPrev = down;
+  },
+
+  setPadDir(d, x, y) {
+    this.padDir = d;
+    this.padVec = { x, y };
+  },
+
+  // Col controller la croce sullo schermo non serve: la nascondiamo (torna al primo tocco)
+  usePadUI() {
+    if (!this.isTouch) return;
+    this.isTouch = false;
+    const root = document.getElementById('touch');
+    if (root) root.style.display = 'none';
   },
 
   pressA() {
@@ -60,7 +109,7 @@ const Controls = {
   dir() {
     if (!this.enabled) return null;
     if (this.keyOrder.length) return this.keyOrder[this.keyOrder.length - 1];
-    return this.touchDir;
+    return this.padDir || this.touchDir;
   },
 
   // Vettore a 8 direzioni per il ghiaccio
@@ -74,6 +123,7 @@ const Controls = {
       }
       return { x, y };
     }
+    if (this.padDir) return { x: this.padVec.x, y: this.padVec.y };
     return { x: this.touchVec.x, y: this.touchVec.y };
   },
 

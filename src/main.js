@@ -121,3 +121,4 @@ const game = new Phaser.Game({
 setupMuteButton();
 setupOrientation();
 setupPause();
+Crt.init(game);

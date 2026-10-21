@@ -88,11 +88,13 @@ class TitleScene extends BaseScene {
     for (;;) {
       const main = canContinue ? ['Continua', 'Nuova partita', 'Scegli livello'] : ['Nuova partita', 'Scegli livello'];
       if (Audio8.hasFiles()) main.push('Musica');
+      main.push(`Effetto TV: ${Crt.on ? 'sì' : 'no'}`);
       const i = await GianicoloBattle.choose(this, 'Menu', main, { x: 240, y: 168 });
       if (i < 0) return;
       Audio8.sfx('select');
       if (main[i] === 'Continua') { this.goTo(saved); return; }
       if (main[i] === 'Nuova partita') break;
+      if (main[i].startsWith('Effetto TV')) { Crt.set(!Crt.on); continue; }
       if (main[i] === 'Musica') {
         const opts = MUSIC_CHOICES.map(([label, on]) => (on === Audio8.useFiles ? '♪ ' : '') + label);
         const m = await GianicoloBattle.choose(this, 'Che musica ascoltiamo?', [...opts, 'Indietro'], { x: 240, y: 172 });
