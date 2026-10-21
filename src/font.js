@@ -159,7 +159,7 @@ const FontMetrics = {
   },
 };
 
-function buildPixelFont(scene) {
+function buildPixelFont(scene, color = '#ffffff', key = FONT_KEY) {
   const entries = Object.entries(GLYPHS).map(([ch, spec]) => [String(ch), parseGlyph(spec)]);
   const pad = 1;
   const cols = 16;
@@ -173,7 +173,7 @@ function buildPixelFont(scene) {
     const cx = (i % cols) * cellW;
     const cy = Math.floor(i / cols) * cellH;
     g.rows.forEach((r, y) => {
-      for (let x = 0; x < r.length; x++) if (r[x] === '#') Pix.px(ctx, cx + x, cy + g.top + y, '#ffffff');
+      for (let x = 0; x < r.length; x++) if (r[x] === '#') Pix.px(ctx, cx + x, cy + g.top + y, color);
     });
     FontMetrics.widths[ch] = g.w;
     xml += `<char id="${ch.charCodeAt(0)}" x="${cx}" y="${cy}" width="${g.w}" height="${FONT_H}" ` +
@@ -181,11 +181,28 @@ function buildPixelFont(scene) {
   });
   xml += '</chars></font>';
 
-  Pix.addTexture(scene, FONT_KEY, canvas);
+  Pix.addTexture(scene, key, canvas);
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  const frame = scene.textures.getFrame(FONT_KEY);
-  const data = Phaser.GameObjects.BitmapText.ParseXMLBitmapFont(doc, frame, 0, 0, scene.textures.get(FONT_KEY));
-  scene.cache.bitmapFont.add(FONT_KEY, { data, texture: FONT_KEY, frame: null });
+  const frame = scene.textures.getFrame(key);
+  const data = Phaser.GameObjects.BitmapText.ParseXMLBitmapFont(doc, frame, 0, 0, scene.textures.get(key));
+  scene.cache.bitmapFont.add(key, { data, texture: key, frame: null });
+}
+
+// Senza WebGL (es. LibreWolf) Phaser disegna su Canvas, dove il tint del testo non funziona:
+// lì usiamo una copia del font già colorata, creata al primo uso di ogni colore
+function fontKeyFor(scene, color) {
+  if (color === undefined || scene.sys.renderer.type !== Phaser.CANVAS) return FONT_KEY;
+  const hex = '#' + (color >>> 0).toString(16).padStart(6, '0');
+  const key = `${FONT_KEY}_${hex.slice(1)}`;
+  if (!scene.cache.bitmapFont.exists(key)) buildPixelFont(scene, hex, key);
+  return key;
+}
+
+// Cambia colore a un BitmapText: tint con WebGL, font colorato con Canvas
+function tintText(scene, t, color) {
+  if (scene.sys.renderer.type === Phaser.CANVAS) t.setFont(fontKeyFor(scene, color));
+  else t.setTint(color);
+  return t;
 }
 
 // Testo pixel con ombra opzionale. scale: 1, 2, 3 ...
@@ -196,15 +213,16 @@ function buildPixelFont(scene) {
 function addText(scene, x, y, str, opts = {}) {
   const scale = opts.scale || 1;
   const make = (px, py) => scene.add.bitmapText(px, py, FONT_KEY, fontText(str), FONT_H * scale, opts.align || 0);
+  const paint = (t, c) => tintText(scene, t, c);
   let obj;
   if (opts.shadow !== undefined || opts.origin) {
     const [ox, oy] = opts.origin || [0, 0];
     const parts = [];
-    const sh = opts.shadow !== undefined ? make(0, 0).setTint(opts.shadow) : null;
+    const sh = opts.shadow !== undefined ? paint(make(0, 0), opts.shadow) : null;
     const tx = make(0, 0);
     if (sh) parts.push(sh);
     parts.push(tx);
-    if (opts.color !== undefined) tx.setTint(opts.color);
+    if (opts.color !== undefined) paint(tx, opts.color);
     obj = scene.add.container(Math.round(x), Math.round(y), parts);
     const layout = () => {
       const lx = -Math.round(tx.width * ox);
@@ -215,10 +233,11 @@ function addText(scene, x, y, str, opts = {}) {
     layout();
     obj.setText = (s) => { tx.setText(fontText(s)); if (sh) sh.setText(fontText(s)); layout(); return obj; };
     obj.setLineSpacing = (v) => { tx.setLineSpacing(v); if (sh) sh.setLineSpacing(v); layout(); return obj; };
-    obj.setTint = (c) => { tx.setTint(c); return obj; };
+    obj.setTint = (c) => { paint(tx, c); return obj; };
   } else {
     obj = make(Math.round(x), Math.round(y));
-    if (opts.color !== undefined) obj.setTint(opts.color);
+    if (opts.color !== undefined) paint(obj, opts.color);
+    if (scene.sys.renderer.type === Phaser.CANVAS) obj.setTint = (c) => paint(obj, c);
     const raw = obj.setText;
     obj.setText = (s) => raw.call(obj, fontText(s));
   }

@@ -16,6 +16,9 @@ const HEART_GIFTS = ['un abbraccio', 'una risata', 'un bacino', 'una carezza', '
   'una coccola', 'un tè caldo', 'un sorriso', 'un "ti amo"', 'tutto il mio amore'];
 const HEARTS_NEEDED = HEART_SPOTS.length;
 
+// Velocità relativa oltre la quale Francesca e Simone si scontrano e cascano insieme
+const TUMBLE_SPEED = 28;
+
 // Il varco per uscire, sulla balaustra di destra (si apre solo alla fine)
 const EXIT = { y0: 300, y1: 356 };
 
@@ -713,6 +716,7 @@ class Level2Scene extends BaseScene {
     this.svx = 0;
     this.svy = 0;
     this.nextGrumble = this.time.now + 5000;
+    this.tumbleAfter = this.time.now + 2000;
     this.romance = true;
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 10);
     this.busy = false;
@@ -752,13 +756,19 @@ class Level2Scene extends BaseScene {
 
   tickRomance(time, dt) {
     if (this.leavingRink) { this.followSimone(time, dt); return; }
-    if (this.busy || this.leaving || this.dialog.active) {
-      this.slide(dt, { x: 0, y: 0 }, 4);
+    if (this.tumbleStars) this.updateTumbleStars(time);
+    if (this.busy || this.leaving || this.dialog.active || this.tumbling) {
+      this.slide(dt, { x: 0, y: 0 }, this.tumbling ? 2.5 : 4);
       this.followSimone(time, dt);
       return;
     }
     this.slide(dt, Controls.axis());
     this.followSimone(time, dt);
+    // se si scontrano un po' forte, cascano tutti e due
+    const s = this.simone, p = this.player;
+    const cx = (s.x - p.x) / 9, cy = (s.y - p.y) / 5;
+    const rel = Math.hypot(this.vx - this.svx, this.vy - this.svy);
+    if (cx * cx + cy * cy < 1 && rel > TUMBLE_SPEED && time > this.tumbleAfter) { this.tumble(); return; }
     for (const h of this.hearts) {
       if (h.got || Math.abs(h.x - this.player.x) > 10 || Math.abs(h.y - this.player.y) > 10) continue;
       h.got = true;
@@ -783,11 +793,11 @@ class Level2Scene extends BaseScene {
     const dx = p.x + bx * SIMONE_ICE.gap - s.x;
     const dy = p.y + by * SIMONE_ICE.gap - s.y;
     const d = Math.hypot(dx, dy);
-    if (d > 6) {
+    if (d > 6 && !this.tumbling) {
       this.svx += dx / d * SIMONE_ICE.acc * dt;
       this.svy += dy / d * SIMONE_ICE.acc * dt;
     }
-    const damp = Math.exp(-SIMONE_ICE.drag * dt);
+    const damp = Math.exp(-(SIMONE_ICE.drag + (this.tumbling ? 2.5 : 0)) * dt);
     this.svx *= damp;
     this.svy *= damp;
     const v = Math.hypot(this.svx, this.svy);
@@ -809,6 +819,7 @@ class Level2Scene extends BaseScene {
       if (vn > 0) { this.svx -= vn * gx / gl; this.svy -= vn * gy / gl; }
     }
     s.setPos(nx, ny);
+    if (this.tumbling) return;
     // barcolla quando va veloce: si vede che fa fatica
     const wob = Math.min(1, v / 40);
     s.sprite.setAngle(Math.sin(time / 120) * 7 * wob);
@@ -824,9 +835,64 @@ class Level2Scene extends BaseScene {
     }
   }
 
+  // Scontro tra i due: giravolta, stelline, e si rialzano lì dove sono
+  async tumble() {
+    this.tumbling = true;
+    Audio8.sfx('fall');
+    const p = this.player, s = this.simone;
+    const ax = p.x - s.x, ay = p.y - s.y;
+    const al = Math.hypot(ax, ay) || 1;
+    this.vx = ax / al * 55;
+    this.vy = ay / al * 55;
+    this.svx = -ax / al * 45;
+    this.svy = -ay / al * 45;
+    if (this.grumble) { this.grumble.destroy(); this.grumble = null; }
+    const oops = Art.bubble(this, ['scusa Picci!', 'frenooo!', 'era un abbraccio!', 'non ho visto la curva!'][Math.floor(Math.random() * 4)]);
+    oops.setDepth(2000);
+    const follow = this.time.addEvent({ delay: 16, loop: true, callback: () => oops.setPosition(s.x, s.y - 24) });
+    this.time.delayedCall(1300, () => { follow.remove(); oops.destroy(); });
+
+    for (const c of [p, s]) {
+      c.sprite.anims.stop();
+      c.sprite.setOrigin(0.5, 0.75);
+    }
+    await Promise.all([
+      this.tweenP({ targets: p.sprite, angle: 720, duration: 550, ease: 'Quad.Out' }),
+      this.tweenP({ targets: s.sprite, angle: -720, duration: 600, ease: 'Quad.Out' }),
+    ]);
+    p.sprite.setAngle(ax < 0 ? -90 : 90);
+    s.sprite.setAngle(ax < 0 ? 90 : -90);
+    this.tumbleStars = [p, s].map(() => [0, 1, 2].map(() => this.add.image(0, 0, 'star').setDepth(2000)));
+    await this.wait(1100);
+    this.tumbleStars.flat().forEach(st => st.destroy());
+    this.tumbleStars = null;
+
+    // si rialzano con un saltello, e un cuoricino tra loro
+    for (const c of [p, s]) {
+      c.sprite.setAngle(0).setOrigin(0.5, 1);
+      c.face(c === p ? (ax < 0 ? 'right' : 'left') : (ax < 0 ? 'left' : 'right'));
+      this.tweens.add({ targets: c, lift: 4, duration: 120, yoyo: true, onUpdate: () => c.sync(), onComplete: () => { c.lift = 0; c.sync(); } });
+    }
+    Audio8.sfx('pop');
+    const h = this.add.image((p.x + s.x) / 2, Math.min(p.y, s.y) - 26, 'heartPink').setDepth(2000).setScale(0);
+    this.tweens.add({ targets: h, scale: 1, duration: 250, ease: 'Back.Out' });
+    this.tweens.add({ targets: h, y: h.y - 12, alpha: 0, delay: 500, duration: 600, onComplete: () => h.destroy() });
+    await this.wait(300);
+    this.tumbleAfter = this.time.now + 2500;
+    this.tumbling = false;
+    Controls.reset();
+  }
+
+  updateTumbleStars(time) {
+    [this.player, this.simone].forEach((c, k) => this.tumbleStars[k].forEach((st, i) => {
+      const a = time / 220 + (i * Math.PI * 2) / 3 + k;
+      st.setPosition(Math.round(c.x + Math.cos(a) * 9), Math.round(c.y - 8 + Math.sin(a) * 3));
+    }));
+  }
+
   // Francesca esce dal varco; Simone arranca dietro, poi fine livello
   async leaveRink() {
-    if (this.leavingRink) { this.followSimone(time, dt); return; }
+    if (this.leavingRink || this.tumbling) return;
     this.leavingRink = true;
     this.busy = true;
     this.cameras.main.stopFollow();
