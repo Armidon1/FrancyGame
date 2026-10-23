@@ -4,9 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Picci Picci">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#1a1020">
   <title>Il gioco di Picci Picci</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'><path fill='%23e8506a' d='M1 0h2v1h1V0h2v1h1v3H6v1H5v1H4v1H3V6H2V5H1V4H0V1h1z'/></svg>">
   <style>
     html, body {
@@ -17,7 +21,9 @@
       overscroll-behavior: none;
     }
     #wrap { position: fixed; inset: 0; background: #1a1020; }
-    #game { position: absolute; inset: 0; }
+    #game { position: absolute;
+      inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    }
     #game canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
     canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; width: 100%; height: 100%; display: block; }
 
@@ -76,6 +82,26 @@
     @keyframes turn { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
     body.portrait #rotate { display: flex; }
 
+    #ios-install {
+      width: min(420px, calc(100% - 32px)); margin: auto; padding: 18px;
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px);
+      overflow-y: auto; touch-action: pan-y;
+      box-sizing: border-box; border: 2px solid #f29bb0; border-radius: 8px;
+      background: #2e2350; color: #fbf3e4; font: 14px/1.4 sans-serif;
+    }
+    #ios-install::backdrop { background: rgba(26, 16, 32, 0.85); }
+    html.ios-install-open, html.ios-install-open body { touch-action: pan-y; }
+    #ios-install h2 { margin: 0 0 8px; font-size: 18px; color: #ffd6de; }
+    #ios-install p { margin: 8px 0; }
+    #ios-install ol { margin: 10px 0; padding-left: 22px; }
+    #ios-install li { margin: 4px 0; }
+    #ios-install button {
+      display: block; width: 100%; min-height: 44px; margin-top: 14px;
+      border: 2px solid #f29bb0; border-radius: 6px;
+      background: #fbf3e4; color: #2e2350; font: bold 15px sans-serif;
+      cursor: pointer; touch-action: manipulation;
+    }
+
     #levelselect {
       display: none; position: fixed; inset: 0; z-index: 30; background: rgba(26, 16, 32, 0.92);
       flex-direction: column; align-items: center; justify-content: center; gap: 6px;
@@ -97,8 +123,20 @@
     <button id="pausebtn" aria-label="Menu">☰</button>
   </div>
   <div id="rotate"><div class="phone"></div><div>Gira il telefono<br>in orizzontale ♥</div></div>
+  <dialog id="ios-install" aria-labelledby="ios-install-title" aria-describedby="ios-install-description">
+    <h2 id="ios-install-title">Più spazio per Picci Picci ♥</h2>
+    <p id="ios-install-description">Su iPhone e iPad puoi giocare senza le barre di Safari avviando il gioco dalla Home.</p>
+    <ol>
+      <li>Apri questo link in <strong>Safari</strong>.</li>
+      <li>Tocca <strong>Condividi → Aggiungi alla schermata Home</strong>.</li>
+      <li>Se compare <strong>“Apri come app web”</strong>, lascialo attivo.</li>
+      <li>Avvia il gioco dalla nuova icona e gira il telefono in orizzontale.</li>
+    </ol>
+    <button type="button" autofocus>Ho capito, continua</button>
+  </dialog>
   <div id="levelselect"></div>
 
+  <script src="src/mobile.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/4.0.0/phaser.min.js"></script>
   <script src="src/pixels.js"></script>
   <script src="src/font.js"></script>
