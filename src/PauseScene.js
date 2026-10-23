@@ -77,6 +77,7 @@ class PauseScene extends Phaser.Scene {
 
   create() {
     Controls.reset();
+    Controls.pushTouchMode('choice', this);
     if (!this.textures.exists('pausePanelL')) {
       Pix.addTexture(this, 'pausePanelL', pausePanelCanvas(176, 150));
       Pix.addTexture(this, 'pausePanelR', pausePanelCanvas(240, 150));

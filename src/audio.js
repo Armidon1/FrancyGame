@@ -265,7 +265,16 @@ const Audio8 = {
     this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
     this.musicGain.gain.setValueAtTime(0.55 * (song.gain || 1), this.ctx.currentTime);
     const tick = () => {
-      while (nextTime < this.ctx.currentTime + 0.25) {
+      if (this.ctx.state !== 'running') return;
+      const now = this.ctx.currentTime;
+      // Un frame lento non deve far partire insieme tutte le note ormai passate.
+      // Saltiamo i passi persi mantenendo il tempo e il punto del brano.
+      if (nextTime < now) {
+        const skipped = Math.ceil((now + 0.02 - nextTime) / stepDur);
+        nextTime += skipped * stepDur;
+        step = (step + skipped) % len;
+      }
+      while (nextTime < now + 0.25) {
         for (const tr of tracks) {
           const tok = tr.tokens[step % tr.tokens.length];
           if (tok && tok !== '.' && tok !== '-') {

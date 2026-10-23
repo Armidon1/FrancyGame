@@ -88,6 +88,8 @@ class DialogBox {
   show(lines) {
     if (!Array.isArray(lines[0]) && typeof lines[0] !== 'object') lines = [lines];
     this.queue = lines.map(l => (Array.isArray(l) ? { who: l[0], text: l[1] } : l));
+    this.releaseTouch?.();
+    this.releaseTouch = Controls.pushTouchMode('dialog', this.scene);
     this.active = true;
     this.root.setVisible(true);
     Controls.reset();
@@ -142,6 +144,8 @@ class DialogBox {
   }
 
   close() {
+    this.releaseTouch?.();
+    this.releaseTouch = null;
     this.active = false;
     this.root.setVisible(false);
     const r = this.resolve;

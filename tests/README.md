@@ -4,7 +4,7 @@
 
 1. Dalla radice avvia python3 -m http.server 8000 e apri http://localhost:8000/?level=1.
 2. Avvicinati a un personaggio, guardalo e premi A: scegli Parla, Sfida! oppure Annulla.
-3. In battaglia usa direzioni e A da tastiera; da telefono tocca una mossa e poi Conferma. Il menu nasconde temporaneamente la croce HTML per non coprire le mosse. Durante i dialoghi i controlli tornano disponibili.
+3. In battaglia usa direzioni e A da tastiera; da telefono tocca una mossa e poi Conferma oppure il pulsante A. Durante lotte e dialoghi la croce è nascosta e A resta visibile, sopra il pannello delle mosse. Nei menu con risposte la croce torna disponibile.
 4. Verifica Spara Pipas (2–5 colpi), Campari Sprits (più attacco e vulnerabilità, massimo due usi efficaci), Pretty Priviledge (-65% attacco nemico, non cumulativo), Fuggi (sempre riuscita senza contrattacco).
 5. Sfida Simone: Bestemmia Lampo (attacco di Francesca -65% e difesa di Simone su per 2 turni), Abbraccione MAX (16 danni), Scorreggia (veleno: -5 PS a ogni round). Simone non ripete un effetto ancora attivo.
 6. Riprova una sfida: PS e modificatori devono ripartire da zero. Nessun esito modifica cuori, posizione o storia. Parlando con Simone rimane la sfida ninja originale.
@@ -29,6 +29,10 @@ Con il server locale attivo, eseguire node tests/gianicoloBattle.browser.cjs. Va
 Il test cammina dal punto iniziale al cameriere, verifica la separazione selezione/conferma, le quattro mosse, tutti gli avversari, vittoria/sconfitta naturali, PS ripristinati, invariabilità dei cuori, panchina, turisti spostati, avvio ninja, riavvio, input touch simulato e cleanup al cambio scena. Gli altri NPC sono invocati direttamente per controllare ogni profilo; non è una partita integrale del livello. Salva screenshot in /tmp/gianicolo-menu.png, /tmp/gianicolo-battle.png e /tmp/gianicolo-mobile.png.
 
 ## Esito di questa implementazione
+
+Per verificare i comandi touch aggiornati: `node tests/mobile-controls.browser.cjs`, con il server locale attivo e `playwright-core` già disponibile. `PLAYWRIGHT_PATH` permette di indicare il percorso della libreria; `CHROME_PATH` e `GAME_URL` funzionano come nel test precedente. Non serve installare dipendenze per giocare.
+
+Questo test verifica un dialogo avanzato con A, una risposta scelta con croce e A, una mossa selezionata con tap e confermata con A, l'assenza di sovrapposizioni tra A e il pannello delle mosse a 844×390, 667×375 e 568×320, la pausa sopra un dialogo e il ripristino dei comandi al riavvio. Screenshot della lotta mobile: `/tmp/francygame-mobile-controls.png`. Si tratta di Chromium con touch simulato, non di Safari su telefono fisico.
 
 Test logica, sintassi e browser desktop/mobile simulato superati senza errori JavaScript. Nessuna prova su telefono fisico. Non è stata riprovata l'intera conclusione ninja né gli altri livelli.
 

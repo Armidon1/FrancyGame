@@ -96,10 +96,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await page.setViewport({width:844,height:390,isMobile:true,hasTouch:true,isLandscape:true});
   await page.evaluate(()=>{const s=game.scene.getScene('Level1');try{s.scene.restart()}catch(e){console.log('RESTART',e.stack);throw e}});await sleep(500);await until(()=>!game.scene.getScene('Level1').locked);
   await page.evaluate(()=>{const s=game.scene.getScene('Level1');s.offerChallenge(s.sindaco,()=>Promise.resolve())});await challenge();await until(()=>!!game.scene.getScene('Level1').npcMenuTick);
-  assert.equal(await page.$eval('#touch',e=>e.style.visibility),'hidden');
+  assert.equal(await page.$eval('#touch .pad',e=>e.hidden),true);
+  assert.equal(await page.$eval('#touch .abtn',e=>getComputedStyle(e).visibility),'visible');
   await page.screenshot({path:'/tmp/gianicolo-mobile.png'});
   await page.evaluate(()=>game.scene.getScene('Level1').scene.start('Level2'));await sleep(800);
-  assert.notEqual(await page.$eval('#touch',e=>e.style.visibility),'hidden');
+  await until(()=>!game.scene.getScene('Level2').locked);
+  assert.equal(await page.$eval('#touch .pad',e=>e.hidden),false);
   console.log('OK: menu mobile e cleanup su cambio scena');
   console.log('ERRORI',JSON.stringify(errors)); assert.deepEqual(errors,[]);
  } finally {await browser.close()}

@@ -255,6 +255,7 @@ class GianicoloBattle {
     this.cancelled = new Promise(resolve => { this.cancelRun = resolve; });
     this.onShutdown = () => this.destroy();
     scene.events.once('shutdown', this.onShutdown);
+    this.releaseTouch = Controls.pushTouchMode('battle', scene);
   }
 
   // "Parla / Sfida! / Annulla" davanti a un personaggio; con Sfida! si sceglie chi combatte.
@@ -408,7 +409,7 @@ class GianicoloBattle {
         if (scene.npcMenuTick === tick) scene.npcMenuTick = null;
         scene.events.off('shutdown', shutdown);
         canvas?.removeEventListener('pointerdown', canvasTap, true);
-        if (touchUI) touchUI.style.visibility = previousTouchVisibility;
+        releaseTouch();
         root.destroy(); Controls.reset(); resolve(value);
       };
     });
@@ -434,10 +435,7 @@ class GianicoloBattle {
     tick.confirm = confirmAt;
     scene.npcMenuTick = tick;
     scene.events.once('shutdown', shutdown);
-    // Conserva anche valori inline diversi da quello predefinito e ripristinali in finish.
-    const touchUI = battleMenu && typeof document !== 'undefined' ? document.getElementById('touch') : null;
-    const previousTouchVisibility = touchUI ? touchUI.style.visibility : '';
-    if (touchUI) touchUI.style.visibility = 'hidden';
+    const releaseTouch = Controls.pushTouchMode(battleMenu ? 'battle' : 'choice', scene);
     return promise;
   }
 
@@ -667,6 +665,7 @@ class GianicoloBattle {
     // Chiude soltanto il dialogo avviato da questa battaglia.
     if (this.dialogResolve && this.scene.dialog.resolve === this.dialogResolve) this.scene.dialog.close();
     this.root?.destroy(); this.root = null;
+    this.releaseTouch();
     Controls.reset();
     if (this.musicStarted) {
       this.musicStarted = false;

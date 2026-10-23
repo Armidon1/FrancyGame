@@ -98,6 +98,15 @@ class ToiletBattle {
   }
 
   async run() {
+    const releaseTouch = Controls.pushTouchMode('battle', this.scene);
+    try {
+      return await this.play();
+    } finally {
+      releaseTouch();
+    }
+  }
+
+  async play() {
     const S = this.scene;
     this.enemyHP = 100;
     this.simoneHP = 100;

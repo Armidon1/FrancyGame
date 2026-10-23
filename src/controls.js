@@ -12,6 +12,32 @@ const Controls = {
   aHeld: false,
   enabled: true,
   isTouch: false,
+  touchModes: [],
+
+  // Ogni finestra ripristina i comandi di quella sotto di sé, anche se la scena cambia.
+  pushTouchMode(mode, scene) {
+    const entry = { mode };
+    this.touchModes.push(entry);
+    this.refreshTouchMode();
+    const release = () => {
+      const index = this.touchModes.indexOf(entry);
+      if (index < 0) return;
+      this.touchModes.splice(index, 1);
+      scene.events.off('shutdown', release);
+      this.refreshTouchMode();
+    };
+    scene.events.once('shutdown', release);
+    return release;
+  },
+
+  refreshTouchMode() {
+    const mode = this.touchModes.at(-1)?.mode || 'explore';
+    if (this.touchRoot) this.touchRoot.dataset.mode = mode;
+    if (this.padEl) {
+      this.padEl.hidden = mode === 'dialog' || mode === 'battle';
+      if (this.padEl.hidden) this.setTouchDir(null, 0, 0);
+    }
+  },
 
   init() {
     const dirOf = {
@@ -136,6 +162,7 @@ const Controls = {
   buildTouchUI() {
     const root = document.getElementById('touch');
     if (!root) return;
+    this.touchRoot = root;
     if (!this.isTouch) { root.style.display = 'none'; }
 
     // Croce direzionale disegnata in pixel art
@@ -150,9 +177,11 @@ const Controls = {
     a.appendChild(this.aCanvas());
     root.appendChild(a);
     this.aEl = a;
+    this.refreshTouchMode();
 
     let padPointer = null;
     const updatePad = (e) => {
+      if (pad.hidden) return;
       const r = pad.getBoundingClientRect();
       const dx = e.clientX - (r.left + r.width / 2);
       const dy = e.clientY - (r.top + r.height / 2);
