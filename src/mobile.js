@@ -1,5 +1,5 @@
 // Su iOS le barre del browser si eliminano avviando il gioco dalla Home.
-// Non occorre un service worker: il gioco continua a caricarsi dalla rete.
+// Il download offline si esegue poi dalla Home (src/offline.js).
 (() => {
   const standalone = window.matchMedia('(display-mode: standalone)');
   const fullscreen = window.matchMedia('(display-mode: fullscreen)');

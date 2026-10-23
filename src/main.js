@@ -69,6 +69,8 @@ function setupPause() {
   setInterval(() => {
     const on = game.scene.getScenes(true).some(s => PAUSABLE.includes(s.scene.key) || s.scene.key === 'Pause');
     btn.style.display = on ? '' : 'none';
+    document.getElementById('offline-open').hidden = !game.scene.getScenes(true)
+      .some(s => s.scene.key === 'Title' || s.scene.key === 'Pause');
   }, 300);
   btn.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
@@ -122,3 +124,4 @@ setupMuteButton();
 setupOrientation();
 setupPause();
 Crt.init(game);
+OfflineGame.init();

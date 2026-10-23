@@ -1,0 +1,160 @@
+{
+  "version": "eed4d71013d304e9",
+  "assets": [
+    {
+      "url": "index.html",
+      "sha256": "1e3ac80d7fdae646be0bbbd393ce0b72544b4a59c7cbd2c146c3d61451f3d253"
+    },
+    {
+      "url": "manifest.webmanifest",
+      "sha256": "7c06656fedf459a8caef0c617cd17440eb772dd9d4cb3af76502c0ccdcab16da"
+    },
+    {
+      "url": "assets/app-icon-180.png",
+      "sha256": "45b9f9a1ca5de703230b3539015c2482f7e539784c6c9afc13710be2f2b59fe7"
+    },
+    {
+      "url": "assets/app-icon-192.png",
+      "sha256": "e34a4b9fe2c6e682422866c5e43596c05d98ed78473800f4a53ffa1d39d9790c"
+    },
+    {
+      "url": "assets/app-icon-512.png",
+      "sha256": "0687f2d9bb18aff9692a3bafce974a89802a02fac47494cc8da6181039c727ee"
+    },
+    {
+      "url": "assets/francesca_sheet.png",
+      "sha256": "3e54ccc6545e153d8798c27751da8995db96ba13e55f93c7f25b6e684d48d030"
+    },
+    {
+      "url": "assets/simone_sheet.png",
+      "sha256": "a432eb684a9e41cb31200c6d2f53dee2aa9587d62ba8dcdd979a4c7c7ef76755"
+    },
+    {
+      "url": "src/mobile.js",
+      "sha256": "294a35bc61521eeea5e603b0f482169fa20634e009d069df31232cbe5704c459"
+    },
+    {
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/phaser/4.0.0/phaser.min.js"
+    },
+    {
+      "url": "src/pixels.js",
+      "sha256": "b690803ad374e4010ad662cafb54078a647529eab910992689c8c2d236954e80"
+    },
+    {
+      "url": "src/font.js",
+      "sha256": "3459d519c9550fbd987d9d1c2a622d8c1f9f01fc9479d82c4b563835e543c294"
+    },
+    {
+      "url": "src/audio.js",
+      "sha256": "881638cc3779e2bd879ff9351f0596b560c229a66807248221482da5fe06a934"
+    },
+    {
+      "url": "local/songs.js",
+      "sha256": "2493d41830e8b5340c55b4406c4cd1bc311e795e89e96b739f4c4e3a33ed30d7"
+    },
+    {
+      "url": "src/controls.js",
+      "sha256": "8f2c4d19cb8bb677a1d9aa8cd645f79cfc87a0417ccd29c0fe74c030143175a3"
+    },
+    {
+      "url": "src/save.js",
+      "sha256": "ce346e6877de0c698a4bf9c587bf7e5ecb3982088b249e4015c2c83f5ed4ff7d"
+    },
+    {
+      "url": "src/mode.js",
+      "sha256": "3b5c15dadc69879c61cf62fe1c7079e6023ac79c7bad8fdb273f4d834850db0d"
+    },
+    {
+      "url": "src/art.js",
+      "sha256": "da84ca553c458ae24751ac606b704cd9399b98f8e1af4bd7298a58d73e8c8fec"
+    },
+    {
+      "url": "src/scenery.js",
+      "sha256": "29cdcf26c32daf2cbe2344b7821dd81e0914539561b124a0726887fb79ec061f"
+    },
+    {
+      "url": "src/dialog.js",
+      "sha256": "e69aab96a4878a8bdbccf124d03cdb0f6607a4cfb4de7f3023b7651690a19b89"
+    },
+    {
+      "url": "src/actors.js",
+      "sha256": "ae82adb7a040cb41aa4b2179c82b26e6c1dd90ebb31c6f88c8580de65ffa49db"
+    },
+    {
+      "url": "src/base.js",
+      "sha256": "245183ff1ddec9cac9a53d1c9b8d78f53e28a3f3ac593aff5101b6c9dccc1eb0"
+    },
+    {
+      "url": "src/grid.js",
+      "sha256": "c982122f6b88c4ec9a347998f14b04dbede7bece98ec314922adc5bb5c133add"
+    },
+    {
+      "url": "src/BootScene.js",
+      "sha256": "5b247d4320a7a98806ade6d1de0c9e428edc9493ce29181bf3e6fcd39954cd1f"
+    },
+    {
+      "url": "src/TitleScene.js",
+      "sha256": "03fb5615ad321e2a5a283556935ef5c733de3aff3f9ace4a9c8c1148d51d6f87"
+    },
+    {
+      "url": "src/LevelCompleteScene.js",
+      "sha256": "b08650688e452707ad6aab797999ad8a0fa70d90fa8982bf4e716682a07bcea9"
+    },
+    {
+      "url": "src/gianicoloBattle.js",
+      "sha256": "f245522d8297f4e970f1563dedc8181d7f5b88f3161b26fd7fe593fd0edb474d"
+    },
+    {
+      "url": "src/Level1Scene.js",
+      "sha256": "df21eb02b304b8c93aa5c30de43ca9d94d1b967fdbdd534cdda96a5741923e45"
+    },
+    {
+      "url": "src/Level2Scene.js",
+      "sha256": "45da33c7c703bf59dee0f0c9d22702f3c4093b1b976e349f98e3d23baf43eddb"
+    },
+    {
+      "url": "src/Level3Scene.js",
+      "sha256": "175db125f689cf26aad8c1aa56f7dde1a6ac58bd7cdcbc410295377ca9c76d0f"
+    },
+    {
+      "url": "src/toiletBattle.js",
+      "sha256": "7a12c013e0ee45b416c2cb0a384f5a7ed100522cb1292428a5b34fb7ccbef451"
+    },
+    {
+      "url": "src/LondonNightScene.js",
+      "sha256": "42ff6baa1d52f5a3e6e83337b7b4ed1252ee028aff9d93a42b5f5184d377822a"
+    },
+    {
+      "url": "src/FinaleScene.js",
+      "sha256": "c94ee435f30daee7053a45d3d448853bd9e593c175c0bede67e60397f57b7467"
+    },
+    {
+      "url": "src/PauseScene.js",
+      "sha256": "34a84688dcc8bfe5034df621d7b0b472005c0250339103151c73bdc30b11f600"
+    },
+    {
+      "url": "src/crt.js",
+      "sha256": "ddc7228d58df306613d3fad32cf64bd35a0f6a7a8a5ba08a8b8019d7de5d7177"
+    },
+    {
+      "url": "src/offline.js",
+      "sha256": "cae9e1462df959c5d3bc5220aed21526731568d55a19141fefa6c5a11cd76b7d"
+    },
+    {
+      "url": "src/main.js",
+      "sha256": "d9f8e5a386fc3fcd35d14284d3f65666c66ac4bf83787b7c912a439ee35e76c6"
+    },
+    {
+      "url": "local/gianicolo.mp3",
+      "sha256": "0949eb141ca78774e6040249b677457af4697c832ce5c52fba1edae81ef28a32"
+    },
+    {
+      "url": "local/ice.mp3",
+      "sha256": "12e5796e85ebc0ebfec41e94a4b9d5d3b62a0812b51d7eb26082c73745fafc4b"
+    },
+    {
+      "url": "local/london.mp3",
+      "sha256": "4f23f99cc79bd041d9b5ac69ad620ecfffa9fccca0d32f0238c7e7ea1077c21b"
+    }
+  ]
+}

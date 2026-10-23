@@ -83,24 +83,34 @@
     @keyframes turn { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
     body.portrait #rotate { display: flex; }
 
-    #ios-install {
+    #ios-install, #offline-dialog {
       width: min(420px, calc(100% - 32px)); margin: auto; padding: 18px;
       max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px);
       overflow-y: auto; touch-action: pan-y;
       box-sizing: border-box; border: 2px solid #f29bb0; border-radius: 8px;
       background: #2e2350; color: #fbf3e4; font: 14px/1.4 sans-serif;
     }
-    #ios-install::backdrop { background: rgba(26, 16, 32, 0.85); }
-    html.ios-install-open, html.ios-install-open body { touch-action: pan-y; }
-    #ios-install h2 { margin: 0 0 8px; font-size: 18px; color: #ffd6de; }
-    #ios-install p { margin: 8px 0; }
+    #ios-install::backdrop, #offline-dialog::backdrop { background: rgba(26, 16, 32, 0.85); }
+    html.ios-install-open, html.ios-install-open body,
+    html.offline-open, html.offline-open body { touch-action: pan-y; }
+    #ios-install h2, #offline-dialog h2 { margin: 0 0 8px; font-size: 18px; color: #ffd6de; }
+    #ios-install p, #offline-dialog p { margin: 8px 0; }
     #ios-install ol { margin: 10px 0; padding-left: 22px; }
     #ios-install li { margin: 4px 0; }
-    #ios-install button {
+    #ios-install button, #offline-dialog button {
       display: block; width: 100%; min-height: 44px; margin-top: 14px;
       border: 2px solid #f29bb0; border-radius: 6px;
       background: #fbf3e4; color: #2e2350; font: bold 15px sans-serif;
       cursor: pointer; touch-action: manipulation;
+    }
+    #offline-dialog button:disabled { opacity: 0.55; cursor: default; }
+    #offline-dialog progress { width: 100%; height: 16px; accent-color: #f29bb0; }
+    #offline-dialog .small { font-size: 12px; color: #dfcfe8; }
+    #offline-open {
+      position: absolute; z-index: 6; left: 50%; transform: translateX(-50%);
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+      min-height: 36px; padding: 6px 12px; border: 1px solid #f29bb0; border-radius: 6px;
+      background: #2e2350; color: #fbf3e4; font: 13px sans-serif; cursor: pointer;
     }
 
     #levelselect {
@@ -122,6 +132,7 @@
     <div id="touch"></div>
     <button id="mute" aria-label="Audio"></button>
     <button id="pausebtn" aria-label="Menu">☰</button>
+    <button id="offline-open" type="button" hidden>Scarica gioco offline</button>
   </div>
   <div id="rotate"><div class="phone"></div><div>Gira il telefono<br>in orizzontale ♥</div></div>
   <dialog id="ios-install" aria-labelledby="ios-install-title" aria-describedby="ios-install-description">
@@ -132,8 +143,18 @@
       <li>Tocca <strong>Condividi → Aggiungi alla schermata Home</strong>.</li>
       <li>Se compare <strong>“Apri come app web”</strong>, lascialo attivo.</li>
       <li>Avvia il gioco dalla nuova icona e gira il telefono in orizzontale.</li>
+      <li>Per conservarlo senza Internet, tocca <strong>“Scarica gioco offline”</strong> e aspetta la conferma.</li>
     </ol>
     <button type="button" autofocus>Ho capito, continua</button>
+  </dialog>
+  <dialog id="offline-dialog" aria-labelledby="offline-title">
+    <h2 id="offline-title">Picci Picci, anche senza Internet ♥</h2>
+    <p id="offline-instructions">Scarica il gioco completo, con tutti i livelli e le musiche. Tieni aperta questa finestra e resta online fino alla conferma.</p>
+    <progress id="offline-progress" aria-label="Avanzamento del download" value="0" max="1" hidden></progress>
+    <p id="offline-status" role="status" aria-live="polite"></p>
+    <p class="small">Dopo il download, prova ad aprire il gioco in modalità aereo. Conserva l'icona e i dati del sito: se li cancelli o cambi telefono, dovrai scaricarlo di nuovo mentre il sito è online.</p>
+    <button id="offline-download" type="button">Scarica tutto</button>
+    <button id="offline-close" type="button">Torna al gioco</button>
   </dialog>
   <div id="levelselect"></div>
 
@@ -165,6 +186,7 @@
   <script src="src/FinaleScene.js"></script>
   <script src="src/PauseScene.js"></script>
   <script src="src/crt.js"></script>
+  <script src="src/offline.js"></script>
   <script src="src/main.js"></script>
 </body>
 </html>
