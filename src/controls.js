@@ -64,8 +64,14 @@ const Controls = {
     window.addEventListener('blur', () => { this.keyOrder = []; this.aHeld = false; this.setTouchDir(null, 0, 0); });
 
     const params = new URLSearchParams(location.search);
-    this.isTouch = params.get('touch') === '1' ||
-      (params.get('touch') !== '0' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0));
+    const mobile = navigator.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // I dati su puntatore e hover possono essere alterati dalle protezioni del browser.
+    // Da soli non identificano un telefono: su desktop i comandi restano nascosti.
+    // Le opzioni nell'URL rimangono disponibili per le prove dell'interfaccia mobile.
+    this.touchUIAllowed = params.get('touch') === '1' ||
+      (params.get('touch') !== '0' && mobile);
+    this.isTouch = this.touchUIAllowed;
     this.buildTouchUI();
     const poll = () => { this.pollGamepads(); requestAnimationFrame(poll); };
     requestAnimationFrame(poll);
@@ -111,6 +117,7 @@ const Controls = {
   usePadUI() {
     if (!this.isTouch) return;
     this.isTouch = false;
+    document.body.classList.remove('touch');
     const root = document.getElementById('touch');
     if (root) root.style.display = 'none';
   },
@@ -231,9 +238,14 @@ const Controls = {
       if (e.pointerType !== 'mouse' || e.button === 0) this.pressA();
     });
 
-    // Se il primo input è touch su un dispositivo "desktop", mostriamo comunque i controlli
+    // Un tocco riattiva i comandi dopo il controller solo su mobile o nei test espliciti.
+    // Su PC e con ?touch=0 restano nascosti anche se arriva un evento touch.
     window.addEventListener('touchstart', () => {
-      if (!this.isTouch) { this.isTouch = true; root.style.display = ''; }
+      if (this.touchUIAllowed && !this.isTouch) {
+        this.isTouch = true;
+        root.style.display = '';
+        document.body.classList.add('touch');
+      }
     }, { passive: true });
 
     for (const el of [root, pad, a]) el.addEventListener('contextmenu', e => e.preventDefault());

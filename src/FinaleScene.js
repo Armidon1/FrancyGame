@@ -113,11 +113,21 @@ class FinaleScene extends BaseScene {
   }
 
   async typeText(t, full, cps = 30) {
-    for (let i = 1; i <= full.length; i++) {
-      t.setText(full.slice(0, i));
+    let localized = FontMetrics.wrap(fontText(full), 156).join('\n');
+    let i = 0;
+    let finished = false;
+    const refresh = () => {
+      localized = FontMetrics.wrap(fontText(full), 156).join('\n');
+      i = finished ? localized.length : Math.min(i, localized.length);
+      t.setText(localized.slice(0, i));
+    };
+    I18n.bind(t, refresh);
+    for (i = 1; i <= localized.length; i++) {
+      t.setText(localized.slice(0, i));
       if (i % 2) Audio8.sfx('blip');
       await this.wait(1000 / cps);
     }
+    finished = true;
   }
 
   async run() {
@@ -150,10 +160,9 @@ class FinaleScene extends BaseScene {
     await this.tweenP({ targets: panel, alpha: 1, duration: 400 });
     addText(this, 24, 54, 'Premio sbloccato:', { scale: 2, color: 0xd0607e, depth: 40 });
     const body = 'un viaggio a Londra con me, a novembre… e un tè caldo che ti aspetta adesso.';
-    const lines = FontMetrics.wrap(fontText(body), 156).join('\n');
     const bodyText = addText(this, 24, 78, '', { scale: 2, color: 0x2a1d1a, depth: 40 });
     bodyText.setLineSpacing(2);
-    await this.typeText(bodyText, lines);
+    await this.typeText(bodyText, body);
     await this.wait(700);
     const sign = addText(this, 342, 154, '— il tuo orsacchiotto', { scale: 1, color: 0x7a3a5a, origin: [1, 0], depth: 40 });
     sign.setAlpha(0);

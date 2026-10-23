@@ -617,7 +617,7 @@ class Level1Scene extends BaseScene {
 
   toast(text, ms = 2200) {
     if (this.toastObj) this.toastObj.destroy();
-    const w = FontMetrics.measure(fontText(text)) + 16;
+    const w = FontMetrics.measureLocalized(text) + 16;
     const c = this.add.container(240, 30).setScrollFactor(0).setDepth(1200);
     c.add(this.add.rectangle(0, 0, w, 16, 0x1a1020, 0.75));
     c.add(addText(this, 0, 0, text, { color: 0xfbf3e4, origin: [0.5, 0.5] }));

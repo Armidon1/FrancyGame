@@ -82,6 +82,9 @@ class DialogBox {
     this.active = false;
     this.resolve = null;
     scene.tweens.add({ targets: this.arrow, y: '+=2', duration: 350, yoyo: true, repeat: -1 });
+    I18n.bind(this.root, () => {
+      if (this.active && this.currentLine) this.showLine(this.currentLine);
+    });
   }
 
   // lines: [{ who, text }] oppure [['Simone', 'testo'], [null, 'narrazione']]
@@ -100,6 +103,11 @@ class DialogBox {
   nextLine() {
     const line = this.queue.shift();
     if (!line) { this.close(); return; }
+    this.showLine(line);
+  }
+
+  showLine(line) {
+    this.currentLine = line;
     this.setSpeaker(line.who);
     const wrapped = FontMetrics.wrap(fontText(line.text), DIALOG.w - DIALOG.padX * 2);
     this.pages = [];
@@ -133,11 +141,11 @@ class DialogBox {
       this.nameText.setVisible(false);
       return;
     }
-    const w = FontMetrics.measure(fontText(who)) + 14;
+    const w = FontMetrics.measureLocalized(who) + 14;
     const key = `dlgtab_${w}`;
     if (!this.scene.textures.exists(key)) Pix.addTexture(this.scene, key, nameTabCanvas(w));
     this.tab.setTexture(key).setVisible(true);
-    this.nameText.setText(fontText(who)).setVisible(true);
+    this.nameText.setText(who).setVisible(true);
     this.nameText.x = this.tab.x + 7;
     this.nameText.y = this.tab.y + 3;
     this.nameText.setTint(SPEAKER_COLORS[who] || 0x6e4426);

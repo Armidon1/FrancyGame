@@ -143,7 +143,13 @@ class PauseScene extends Phaser.Scene {
     // anche col dito: tocco su una voce = selezione e conferma
     if (this.hit) this.hit.forEach(h => h.destroy());
     this.hit = entries.map((_, i) => this.add.zone(34, 80 + i * 20 - 9, 164, 18).setOrigin(0, 0)
-      .setInteractive().on('pointerdown', () => { this.select(i); this.confirm(); }));
+      .setInteractive().on('pointerdown', (pointer) => {
+        // Il menu ha già gestito il tap: non deve diventare una seconda A sul gioco.
+        pointer.event?.stopPropagation();
+        Controls.reset();
+        this.select(i);
+        this.confirm();
+      }));
     this.select(sel);
   }
 
@@ -182,19 +188,37 @@ class PauseScene extends Phaser.Scene {
     ];
     if (Mode.hard) entries.push([`Zaino (${Mode.total()})`, () => this.showBag(), 'bag']);
     entries.push(['Scegli livello', () => this.showLevels(), 'levels']);
+    entries.push(['Impostazioni', () => this.showSettings(), 'settings']);
+    entries.push(['Menu principale', () => this.showConfirm(), 'title']);
+    const at = typeof sel === 'string' ? Math.max(0, entries.findIndex(e => e[2] === sel)) : sel;
+    this.setMenu('Pausa', entries, at);
+  }
+
+  showSettings(sel = 0) {
+    this.backAction = () => this.showMain('settings');
+    const entries = [[`Lingua: ${I18n.lang === 'en' ? 'English' : 'Italiano'}`, () => this.showLanguage(), 'language']];
     if (Audio8.hasFiles()) {
       entries.push([`Musica: ${Audio8.useFiles ? 'le nostre canzoni' : 'del gioco'}`, () => {
         Audio8.setUseFiles(!Audio8.useFiles);
-        this.showMain('music');
+        this.showSettings('music');
       }, 'music']);
     }
     entries.push([`Schermo TV: ${Crt.on ? 'acceso' : 'spento'}`, () => {
       Crt.set(!Crt.on);
-      this.showMain('tv');
+      this.showSettings('tv');
     }, 'tv']);
-    entries.push(['Menu principale', () => this.showConfirm(), 'title']);
+    entries.push(['Indietro', () => this.showMain('settings'), 'back']);
     const at = typeof sel === 'string' ? Math.max(0, entries.findIndex(e => e[2] === sel)) : sel;
-    this.setMenu('Pausa', entries, at);
+    this.setMenu('Impostazioni', entries, at);
+  }
+
+  showLanguage() {
+    this.backAction = () => this.showSettings('language');
+    this.setMenu('Lingua / Language', [
+      ['Italiano', () => { I18n.set('it'); this.showLanguage(); }],
+      ['English', () => { I18n.set('en'); this.showLanguage(); }],
+      ['Indietro', () => this.showSettings('language')],
+    ], I18n.lang === 'en' ? 1 : 0);
   }
 
   // Zaino (solo Arduo): scegli lo spuntino, poi chi lo mangia

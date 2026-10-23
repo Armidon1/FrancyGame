@@ -57,7 +57,7 @@ class BaseScene extends Phaser.Scene {
 
   // Canticchiare: fumetto con le note sopra il personaggio e qualche nota sottovoce
   hum(ch, text, ms = 2600) {
-    const w = FontMetrics.measure(fontText(text)) + 10;
+    const w = FontMetrics.measureLocalized(text) + 10;
     this.humBubbles.push({ b: Art.bubble(this, text), ch, w, until: this.time.now + ms });
     const scale = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6'];
     for (let i = 0; i < 4; i++) {
@@ -118,7 +118,7 @@ class BaseScene extends Phaser.Scene {
   // Cartello iniziale "Livello N — nome"
   levelCard(num, name) {
     const g = this.add.container(240, 120).setScrollFactor(0).setDepth(1500);
-    const w = Math.max(FontMetrics.measure(fontText(name)) * 2, 120) + 32;
+    const w = Math.max(FontMetrics.measureLocalized(name) * 2, 120) + 32;
     const key = `card_${w}`;
     if (!this.textures.exists(key)) {
       const [c, ctx] = Pix.canvas(w, 46);

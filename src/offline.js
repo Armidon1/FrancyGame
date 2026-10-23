@@ -80,7 +80,7 @@ const OfflineGame = {
   async check() {
     const result = await this.request('STATUS');
     this.ready = result.ready;
-    this.launcher.textContent = this.ready ? 'Gioco disponibile offline ✓' : 'Scarica gioco offline';
+    I18n.text(this.launcher, this.ready ? 'Gioco disponibile offline ✓' : 'Scarica gioco offline');
     return this.ready;
   },
 
@@ -94,19 +94,19 @@ const OfflineGame = {
     this.progress.hidden = true;
     this.downloadButton.hidden = false;
     if (this.isAppleBrowser()) {
-      this.status.textContent = 'Prima aggiungi il gioco alla Home: Safari → Condividi → Aggiungi alla schermata Home. Poi aprilo dalla nuova icona e scaricalo da lì.';
+      I18n.text(this.status, 'Prima aggiungi il gioco alla Home: Safari → Condividi → Aggiungi alla schermata Home. Poi aprilo dalla nuova icona e scaricalo da lì.');
       this.downloadButton.disabled = true;
       return;
     }
     this.downloadButton.disabled = true;
-    this.status.textContent = 'Controllo la copia sul dispositivo…';
+    I18n.text(this.status, 'Controllo la copia sul dispositivo…');
     try {
       const ready = await this.check();
-      this.status.textContent = ready ? 'Pronto per giocare offline! Tutti i file sono sul dispositivo, anche se il sito viene disattivato.' : 'Il gioco non è ancora scaricato. Tocca “Scarica tutto” mentre il sito è online.';
-      this.downloadButton.textContent = ready ? 'Controlla aggiornamenti' : 'Scarica tutto';
+      I18n.text(this.status, ready ? 'Pronto per giocare offline! Tutti i file sono sul dispositivo, anche se il sito viene disattivato.' : 'Il gioco non è ancora scaricato. Tocca “Scarica tutto” mentre il sito è online.');
+      I18n.text(this.downloadButton, ready ? 'Controlla aggiornamenti' : 'Scarica tutto');
       this.downloadButton.disabled = false;
     } catch (error) {
-      this.status.textContent = error.message;
+      I18n.text(this.status, error.message);
       this.downloadButton.disabled = !window.isSecureContext || !('serviceWorker' in navigator);
     }
   },
@@ -118,20 +118,20 @@ const OfflineGame = {
     this.closeButton.disabled = true;
     this.progress.hidden = false;
     this.progress.value = 0;
-    this.status.textContent = 'Scarico il gioco. Lascia aperta questa finestra…';
+    I18n.text(this.status, 'Scarico il gioco. Lascia aperta questa finestra…');
     // La richiesta avviene durante un gesto dell'utente; il browser può concedere dati persistenti.
     const persistence = navigator.storage?.persist?.().catch(() => false);
     try {
       await this.request('DOWNLOAD', ({ done, total }) => {
         this.progress.max = total;
         this.progress.value = done;
-        this.status.textContent = `Scarico il gioco: ${done} / ${total} file. Resta online fino alla conferma.`;
+        I18n.text(this.status, `Scarico il gioco: ${done} / ${total} file. Resta online fino alla conferma.`);
       });
       if (!await this.check()) throw new Error('La verifica dei file non è riuscita. Resta online e riprova.');
-      this.status.textContent = 'Pronto per giocare offline! Ora puoi chiudere il gioco e riaprirlo dall’icona anche senza Internet. Provalo in modalità aereo prima che il sito venga disattivato.';
-      this.downloadButton.textContent = 'Controlla aggiornamenti';
+      I18n.text(this.status, 'Pronto per giocare offline! Ora puoi chiudere il gioco e riaprirlo dall’icona anche senza Internet. Provalo in modalità aereo prima che il sito venga disattivato.');
+      I18n.text(this.downloadButton, 'Controlla aggiornamenti');
     } catch (error) {
-      this.status.textContent = `Download non completato. ${error.message} ${this.ready ? 'La copia già scaricata resta disponibile.' : 'Puoi riprovare senza perdere i salvataggi.'}`;
+      I18n.text(this.status, `Download non completato. ${error.message} ${this.ready ? 'La copia già scaricata resta disponibile.' : 'Puoi riprovare senza perdere i salvataggi.'}`);
     } finally {
       // Non aspettiamo una decisione sullo spazio per confermare i file già verificati.
       void persistence;

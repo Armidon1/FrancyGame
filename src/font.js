@@ -119,7 +119,8 @@ const FONT_ICONS = {
   '’': "'", '‘': "'", '“': '"', '”': '"', '—': '–', 'É': 'È',
 };
 
-function fontText(str) {
+function fontText(str, translate = true) {
+  if (translate) str = I18n.t(str);
   let out = '';
   for (const ch of str) out += FONT_ICONS[ch] !== undefined ? FONT_ICONS[ch] : ch;
   return out;
@@ -142,6 +143,11 @@ const FontMetrics = {
     let w = 0;
     for (const ch of str) w += this.advance(ch);
     return Math.max(0, w - 1);
+  },
+  // Le cornici si dimensionano per entrambe le lingue, così non tagliano il testo
+  // quando si cambia lingua mentre una scena è in pausa.
+  measureLocalized(str) {
+    return Math.max(this.measure(fontText(str, false)), this.measure(fontText(I18n.t(str, 'en'), false)));
   },
   // A capo sulle parole, restituisce un array di righe
   wrap(str, maxW) {
@@ -243,11 +249,26 @@ function addText(scene, x, y, str, opts = {}) {
   }
   if (opts.fixed) obj.setScrollFactor(0);
   if (opts.depth !== undefined) obj.setDepth(opts.depth);
+  const setText = obj.setText.bind(obj);
+  obj.i18nSource = str;
+  obj.setText = (value) => { obj.i18nSource = value; return setText(value); };
+  I18n.bind(obj, () => setText(obj.i18nSource));
   return obj;
 }
 
 // Scrive testo direttamente su un canvas (per insegne disegnate nella mappa)
 function drawGlyphText(ctx, str, x, y, color, scale = 1) {
+  if (!I18n.redrawingCanvas && I18n.t(str, 'en') !== str) {
+    const w = Math.min(ctx.canvas.width - x, Math.ceil(Math.max(str.length, I18n.t(str, 'en').length) * 8 * scale));
+    const h = Math.min(ctx.canvas.height - y, Math.ceil((FONT_H + 2) * scale));
+    const background = ctx.getImageData(x, y, w, h);
+    (ctx.canvas.i18nDraws ||= []).push(() => {
+      ctx.putImageData(background, x, y);
+      I18n.redrawingCanvas = true;
+      try { drawGlyphText(ctx, str, x, y, color, scale); }
+      finally { I18n.redrawingCanvas = false; }
+    });
+  }
   let cx = x;
   for (const ch of fontText(str)) {
     const spec = GLYPHS[ch];

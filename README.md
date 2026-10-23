@@ -6,7 +6,7 @@
 
 Roma al tramonto, una pista un po' scivolosa e quarantamila passi a Londra.
 
-Pixel art · Tre livelli · Dialoghi in italiano · Comandi touch · Gioco offline
+Pixel art · Tre livelli · Italiano / English · Comandi touch · Gioco offline
 
 ![Il titolo di Picci Picci, tra cuoricini e il tramonto su Roma](docs/screenshots/titolo.png)
 
@@ -51,6 +51,8 @@ Avvicinati a un personaggio o a un oggetto, guardalo e premi **A** quando compar
 
 Su telefono si gioca **in orizzontale**. In verticale compare l'avviso di rotazione.
 
+Su PC la croce direzionale e il pulsante A sono nascosti: si usano tastiera o controller. Il solo supporto touchscreen di un portatile non attiva i comandi del telefono.
+
 - **Esplorazione:** croce e A rimangono alla stessa altezza.
 - **Dialoghi:** la croce sparisce e rimane A, per lasciare leggibile il testo.
 - **Risposte da scegliere:** torna anche la croce.
@@ -68,6 +70,15 @@ Su telefono si gioca **in orizzontale**. In verticale compare l'avviso di rotazi
 **Viaggio** è la modalità rilassata. **Arduo** aggiunge PS che restano tra le lotte e uno zaino di spuntini per recuperare energie: pipas, yogurt greco, taralli e torta rustica. A Londra può combattere anche Simone.
 
 La modalità si sceglie iniziando una nuova partita. Non c'è game over: si può riprovare, e le sfide agli NPC sono facoltative.
+
+### Lingua: italiano o inglese
+
+Il gioco parte in **italiano**, anche se il telefono o il browser sono impostati in un'altra lingua. Per passare all'inglese:
+
+- Dal titolo: apri il menu iniziale, poi **Impostazioni → Lingua / Language → English**.
+- Durante la partita: **☰ → Impostazioni → Lingua / Language → English**.
+
+Per tornare all'italiano, scegli **Italiano** nello stesso menu. La scelta viene salvata sul dispositivo e funziona anche offline. Dialoghi, menu, fumetti, oggetti, mosse e finestre di installazione si aggiornano senza ricominciare il livello. I nomi propri e i titoli delle canzoni restano invariati.
 
 ### Salvataggi, musica e schermo TV
 
@@ -173,6 +184,8 @@ src/                       Scene e sistemi del gioco
   controls.js              Tastiera, touch, controller e visibilità dei comandi
   dialog.js                Dialoghi e ritratti
   audio.js                 Musica, effetti e programmazione delle note
+  i18n.js                  Lingua, preferenza e aggiornamento dei testi
+  i18n-en.js               Catalogo delle traduzioni inglesi
   Level1Scene.js           Gianicolo e ninja
   Level2Scene.js           Pattinaggio
   Level3Scene.js           Londra
@@ -218,6 +231,7 @@ Le verifiche senza dipendenze richiedono Node.js:
 ```sh
 node tests/gianicoloBattle.test.cjs
 node tests/audio-scheduling.test.cjs
+node tests/i18n.test.cjs
 node tools/build-offline.cjs --check
 ```
 
@@ -226,10 +240,13 @@ node tools/build-offline.cjs --check
 | `node tests/gianicoloBattle.browser.cjs` | Interazioni al Gianicolo, battaglie, mosse, fuga e cambio scena. | Server locale attivo, Chromium e `puppeteer-core`. |
 | `node tests/mobile-controls.browser.cjs` | Dialoghi con A, scelte con croce, mosse touch, pausa e ripristino dei comandi; tre dimensioni di schermo. | Server locale attivo, Chromium e `playwright-core`. |
 | `node tests/offline.browser.cjs` | Download fallito e riprovato, aggiornamento incompleto, sito con risposta 404, scene e musiche senza rete, conservazione dei progressi. | Chromium e `playwright-core`; avvia da sé un server temporaneo su localhost. |
+| `node tests/i18n.browser.cjs` | Italiano predefinito, selezione della lingua con touch, cambio durante un dialogo e una battaglia, preferenza salvata e scene in inglese. | Chromium e `playwright-core`; avvia da sé un server temporaneo su localhost. |
 
 `PLAYWRIGHT_PATH` e `PUPPETEER_PATH` possono indicare una libreria già disponibile; `CHROME_PATH` seleziona il browser. I primi due test browser accettano `GAME_URL` per cambiare l'indirizzo del server. Queste librerie servono soltanto ai test e agli screenshot, non per giocare.
 
 I test con touch simulato non sostituiscono una prova su iPhone e Android reali. Per i dettagli delle battaglie e delle verifiche precedenti, vedi [tests/README.md](tests/README.md).
+
+Le traduzioni sono in `src/i18n-en.js`: ogni riga associa il testo italiano alla versione inglese. I segnaposto come `{count}` mantengono i valori dinamici. Dopo aver aggiornato il catalogo, esegui `node tests/i18n.test.cjs` e rigenera l'elenco offline.
 
 ### Aggiornare le immagini del README
 

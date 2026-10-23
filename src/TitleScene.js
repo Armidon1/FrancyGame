@@ -87,8 +87,7 @@ class TitleScene extends BaseScene {
     const levelNames = ['Livello 1 – Il Gianicolo', 'Livello 2 – La pista', 'Livello 3 – Londra'];
     for (;;) {
       const main = canContinue ? ['Continua', 'Nuova partita', 'Scegli livello'] : ['Nuova partita', 'Scegli livello'];
-      if (Audio8.hasFiles()) main.push('Musica');
-      main.push(`Effetto TV: ${Crt.on ? 'sì' : 'no'}`);
+      main.push('Impostazioni');
       const i = await GianicoloBattle.choose(this, 'Menu', main, { x: 240, y: 168 });
       if (i < 0) return;
       Audio8.sfx('select');
@@ -101,13 +100,7 @@ class TitleScene extends BaseScene {
         Mode.start(m === 1 ? 'arduo' : 'viaggio');
         break;
       }
-      if (main[i].startsWith('Effetto TV')) { Crt.set(!Crt.on); continue; }
-      if (main[i] === 'Musica') {
-        const opts = MUSIC_CHOICES.map(([label, on]) => (on === Audio8.useFiles ? '♪ ' : '') + label);
-        const m = await GianicoloBattle.choose(this, 'Che musica ascoltiamo?', [...opts, 'Indietro'], { x: 240, y: 172 });
-        if (m >= 0 && m < MUSIC_CHOICES.length) { Audio8.sfx('select'); Audio8.setUseFiles(MUSIC_CHOICES[m][1]); }
-        continue;
-      }
+      if (main[i] === 'Impostazioni') { await this.settings(); continue; }
       const lv = await GianicoloBattle.choose(this, 'Scegli livello', [...levelNames, 'Indietro'], { x: 240, y: 172 });
       if (lv >= 0 && lv < levelNames.length) { Audio8.sfx('select'); this.goTo(LEVELS[lv].key); return; }
     }
@@ -130,6 +123,24 @@ class TitleScene extends BaseScene {
     ]);
     Audio8.stopSong(0.6);
     this.goTo('Level1');
+  }
+
+  async settings() {
+    for (;;) {
+      const entries = [`Lingua: ${I18n.lang === 'en' ? 'English' : 'Italiano'}`];
+      if (Audio8.hasFiles()) entries.push('Musica');
+      entries.push(`Effetto TV: ${Crt.on ? 'sì' : 'no'}`, 'Indietro');
+      const i = await GianicoloBattle.choose(this, 'Impostazioni', entries, { x: 240, y: 168 });
+      if (i < 0 || entries[i] === 'Indietro') return;
+      if (i === 0) {
+        const language = await GianicoloBattle.choose(this, 'Lingua / Language', ['Italiano', 'English', 'Indietro'], { x: 240, y: 168 });
+        if (language === 0 || language === 1) I18n.set(language === 1 ? 'en' : 'it');
+      } else if (entries[i] === 'Musica') {
+        const opts = MUSIC_CHOICES.map(([label, on]) => (on === Audio8.useFiles ? '♪ ' : '') + label);
+        const m = await GianicoloBattle.choose(this, 'Che musica ascoltiamo?', [...opts, 'Indietro'], { x: 240, y: 168 });
+        if (m >= 0 && m < MUSIC_CHOICES.length) Audio8.setUseFiles(MUSIC_CHOICES[m][1]);
+      } else Crt.set(!Crt.on);
+    }
   }
 }
 

@@ -84,8 +84,7 @@ const Art = {
 
   // Fumetto con testo, restituisce un container (origine: punta in basso al centro)
   bubble(scene, text, opts = {}) {
-    const str = fontText(text);
-    const w = FontMetrics.measure(str) + 10;
+    const w = FontMetrics.measureLocalized(text) + 10;
     const h = 15;
     const key = `bubble_${w}`;
     if (!scene.textures.exists(key)) {

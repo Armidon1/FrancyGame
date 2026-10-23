@@ -2098,7 +2098,7 @@ class Level3Scene extends BaseScene {
       'Mezza Londra attraversata a piedi. 40.000 passi!',
     ];
     caption.setText(captions[leg + 1]);
-    capBox.setSize(FontMetrics.measure(fontText(captions[leg + 1])) + 14, 15);
+    capBox.setSize(FontMetrics.measureLocalized(captions[leg + 1]) + 14, 15);
     const targets = [12480, 31250, L3_GOAL];
     const from = this.steps;
     const to = leg >= 0 ? Math.max(from, targets[leg]) : 0;

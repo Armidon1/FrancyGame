@@ -1,5 +1,11 @@
 # Verifiche delle battaglie al Gianicolo
 
+## Italiano e inglese
+
+`node tests/i18n.test.cjs` verifica il catalogo, i segnaposto dei testi dinamici, l'italiano predefinito, il salvataggio della preferenza e l'assenza di modifiche ai progressi. Non richiede dipendenze.
+
+`node tests/i18n.browser.cjs` richiede Chromium e `playwright-core` già disponibile (`PLAYWRIGHT_PATH` e `CHROME_PATH` facoltativi). Avvia un server temporaneo solo su localhost e prova i menu con tocchi reali simulati: lingua dal titolo, preferenza dopo il riavvio, cambio durante un dialogo senza perdere posizione e progressi, battaglie e scene in inglese, mappa e contapassi. Salva anteprime in `/tmp/francygame-english-settings.png` e `/tmp/francygame-english-battle.png`. La verifica offline comprende anche la preferenza inglese e la finestra di download senza rete.
+
 ## Prova manuale
 
 1. Dalla radice avvia python3 -m http.server 8000 e apri http://localhost:8000/?level=1.

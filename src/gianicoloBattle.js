@@ -367,12 +367,12 @@ class GianicoloBattle {
       paint = () => {
         cards.forEach((c, i) => c.setFillStyle(i === index ? 0xf4d8a8 : 0xfbf3e4));
         labels.forEach((t, i) => t.setTint(i === index ? 0xa33c59 : 0x2a1d1a));
-        desc.setText(fontText(items[index].description));
+        desc.setText(items[index].description);
       };
     } else {
       // Riquadro piccolo e scuro (stile Octopath), di lato a Francesca e all'interlocutore.
       const pad = 7, rowH = 13, headH = 17;
-      const w = Math.max(FontMetrics.measure(fontText(title)), ...items.map(o => FontMetrics.measure(fontText(o.name)) + 10)) + pad * 2;
+      const w = Math.max(FontMetrics.measureLocalized(title), ...items.map(o => FontMetrics.measureLocalized(o.name) + 10)) + pad * 2;
       const h = headH + items.length * rowH + 4;
       const cam = scene.cameras.main, p = scene.player;
       const px = p ? p.x - cam.scrollX : 240, py = p ? p.y - cam.scrollY : 135;

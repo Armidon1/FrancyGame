@@ -6,7 +6,7 @@ const LevelSelect = {
     const el = document.getElementById('levelselect');
     el.innerHTML = '';
     const title = document.createElement('p');
-    title.textContent = 'Selettore livelli (segreto)';
+    I18n.text(title, 'Selettore livelli (segreto)');
     el.appendChild(title);
     const items = [
       ['Introduzione', () => { Save.clear(); return 'Title'; }],
@@ -20,7 +20,7 @@ const LevelSelect = {
     ];
     for (const [label, fn] of items) {
       const b = document.createElement('button');
-      b.textContent = label;
+      I18n.text(b, label);
       b.addEventListener('click', (e) => {
         e.stopPropagation();
         const target = fn();

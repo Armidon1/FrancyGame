@@ -30,6 +30,7 @@ class LevelCompleteScene extends BaseScene {
       scale: 2, color: 0xfbf3e4, shadow: 0x3a2340, origin: [0.5, 0.5], align: 1, depth: 10,
     });
     msg.setLineSpacing(2);
+    I18n.bind(msg, () => msg.setText(FontMetrics.wrap(fontText(level.message), 200).join('\n')));
     msg.setAlpha(0);
     this.tweens.add({ targets: msg, alpha: 1, delay: 500, duration: 700 });
 

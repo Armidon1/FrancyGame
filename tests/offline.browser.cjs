@@ -124,8 +124,16 @@ const server = http.createServer((request, response) => {
     await page.goto(url);
     await page.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
     assert.equal(await page.evaluate(() => Save.level()), 'Level3');
+    await page.evaluate(() => I18n.set('en'));
+    await page.reload();
+    await page.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
+    assert.equal(await page.evaluate(() => I18n.lang), 'en');
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en');
+    await page.locator('#offline-open').click();
+    await page.waitForFunction(() => document.getElementById('offline-status').textContent.includes('Ready to play offline'));
+    assert.match(await page.locator('#offline-title').textContent(), /without Internet/);
     assert.deepEqual(errors, []);
-    console.log('OK: tutti i livelli e il finale avviati senza rete, MP3 decodificati offline, salvataggio mantenuto.');
+    console.log('OK: livelli e finale senza rete, MP3 offline, progressi e lingua inglese mantenuti al riavvio.');
     await context.close();
   } finally {
     await browser.close();

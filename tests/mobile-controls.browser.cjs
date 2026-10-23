@@ -8,10 +8,79 @@ const assert = require('node:assert/strict');
     args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader'],
   });
   try {
-    const page = await browser.newPage({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+    const url = process.env.GAME_URL || 'http://localhost:8000/';
+    const desktop = await browser.newPage({ viewport: { width: 960, height: 540 } });
+    await desktop.goto(url + '?level=title');
+    await desktop.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
+    assert.equal(await desktop.locator('#touch .pad').isVisible(), false);
+    assert.equal(await desktop.locator('#touch .abtn').isVisible(), false);
+    await desktop.evaluate(() => window.dispatchEvent(new Event('touchstart')));
+    assert.equal(await desktop.locator('#touch .abtn').isVisible(), false);
+    await desktop.keyboard.press('Enter');
+    await desktop.waitForFunction(() => !!game.scene.getScene('Title').npcMenuTick);
+    await desktop.close();
+
+    const laptop = await browser.newPage({ viewport: { width: 960, height: 540 }, hasTouch: true });
+    await laptop.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = query => {
+        const result = original(query);
+        if (query === '(pointer: fine) and (hover: hover)') Object.defineProperty(result, 'matches', { value: true });
+        return result;
+      };
+    });
+    await laptop.goto(url + '?level=title');
+    await laptop.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
+    assert.ok(await laptop.evaluate(() => navigator.maxTouchPoints > 0));
+    assert.equal(await laptop.locator('#touch .pad').isVisible(), false);
+    await laptop.touchscreen.tap(480, 400);
+    assert.equal(await laptop.locator('#touch .abtn').isVisible(), false);
+    await laptop.close();
+    const privateDesktop = await browser.newPage({ viewport: { width: 960, height: 540 } });
+    await privateDesktop.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = query => {
+        const result = original(query);
+        if (query.includes('pointer') || query.includes('hover')) {
+          Object.defineProperty(result, 'matches', { value: query === '(pointer: coarse)' });
+        }
+        return result;
+      };
+    });
+    await privateDesktop.goto(url + '?level=title');
+    await privateDesktop.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
+    assert.equal(await privateDesktop.evaluate(() => matchMedia('(pointer: coarse)').matches), true);
+    assert.equal(await privateDesktop.locator('#touch .pad').isVisible(), false);
+    assert.equal(await privateDesktop.locator('#touch .abtn').isVisible(), false);
+    await privateDesktop.evaluate(() => window.dispatchEvent(new Event('touchstart')));
+    assert.equal(await privateDesktop.locator('#touch .abtn').isVisible(), false);
+    await privateDesktop.close();
+    console.log('OK: PC, portatile touchscreen e desktop con puntatore alterato senza croce/A; tastiera disponibile.');
+
+    const ipad = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true,
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15' });
+    await ipad.addInitScript(() => {
+      Object.defineProperty(navigator, 'platform', { value: 'MacIntel' });
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });
+    });
+    await ipad.goto(url + '?level=title');
+    await ipad.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
+    assert.equal(await ipad.locator('#touch .pad').isVisible(), true);
+    assert.equal(await ipad.locator('#touch .abtn').isVisible(), true);
+    await ipad.close();
+
+    const page = await browser.newPage({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true,
+      userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36' });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto((process.env.GAME_URL || 'http://localhost:8000/') + '?level=1&touch=1');
+    await page.goto(url + '?level=title');
+    await page.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
+    assert.equal(await page.locator('#touch .abtn').isVisible(), true);
+    await page.goto(url + '?level=title&touch=0');
+    await page.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Title'));
+    await page.touchscreen.tap(420, 300);
+    assert.equal(await page.locator('#touch .abtn').isVisible(), false);
+    await page.goto(url + '?level=1&touch=1');
     await page.waitForFunction(() => typeof game !== 'undefined' && game.scene.isActive('Level1'));
     const settle = async predicate => {
       for (let i = 0; i < 200; i++) {

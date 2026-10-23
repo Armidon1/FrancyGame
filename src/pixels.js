@@ -96,7 +96,18 @@ const Pix = {
 
   addTexture(scene, key, canvas) {
     if (scene.textures.exists(key)) scene.textures.remove(key);
-    scene.textures.addCanvas(key, canvas);
+    const texture = scene.textures.addCanvas(key, canvas);
+    if (canvas.i18nDraws?.length) {
+      const redraw = () => {
+        if (!scene.textures.exists(key) || scene.textures.get(key) !== texture) {
+          I18n.listeners.delete(redraw);
+          return;
+        }
+        for (const draw of canvas.i18nDraws) draw();
+        texture.refresh();
+      };
+      I18n.listeners.add(redraw);
+    }
   },
 
   addSheet(scene, key, canvas, fw, fh) {
